@@ -1,4 +1,4 @@
-use ark_ff::{BigInteger, Field, PrimeField};
+use ark_ff::{BigInteger, Field, PrimeField, Zero};
 use ccs::{
     circuit::Var,
     constraint_system::{ConstraintSystem, Val, WitnessReader},
@@ -22,14 +22,17 @@ impl<V: Val, const N: usize> Uint<V, N> {
         let bits: [usize; N] = (0..N).collect::<Vec<usize>>().try_into().unwrap();
         let bits = bits.map(|i| {
             let bit = cs.free_variable(|reader| {
-                // TODO: panic if there is more than one non-zero element.
-                let bit = reader
-                    .read(&x)
-                    .to_base_prime_field_elements()
-                    .next()
-                    .unwrap()
-                    .into_bigint()
-                    .get_bit(i);
+                // We either get a prime field, or a an extension field with
+                // only its first base element being non-zero.
+                let mut elements = reader.read(&x).to_base_prime_field_elements();
+                let first = elements.next().unwrap();
+
+                // And just panic if a full extension appears.
+                for rest in elements {
+                    assert!(rest.is_zero());
+                }
+
+                let bit = first.into_bigint().get_bit(i);
                 if bit {
                     F::one()
                 } else {
