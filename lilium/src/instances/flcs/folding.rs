@@ -56,13 +56,11 @@ where
         instance: MessageGuard<Self::A>,
         mut transcript: TranscriptGuard<F, D, Self::Proof>,
     ) -> Result<Self::B, Self::Error> {
-        // TODO: handle.
         let (instances, []): ([FoldableLcsInstance<F, C, I>; 2], _) =
             transcript.unwrap_guard(instance)?;
 
         let sums = instances.each_ref().map(|instance| instance.sum);
         let sumfold_instance = MessageGuard::new(SumFoldInstance::new(sums));
-        // TODO: handle.
         let (sum, folder) =
             SumFold::verify_reduction(key.zerofold.sumfold_key(), sumfold_instance, transcript)?;
         let [a, b] = instances;
