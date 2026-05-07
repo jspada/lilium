@@ -13,6 +13,7 @@ pub mod simple_cs;
 #[cfg(all(test, feature = "ipa"))]
 mod test;
 pub mod testing;
+mod verify;
 
 pub use circuit_key::CircuitKey;
 pub use folding::InstancePair;

@@ -1,13 +1,14 @@
-use crate::instances::lcs::{LcsInstance, LcsProver};
-use crate::{circuit_key::CircuitKey, instances::lcs::verifying::LcsProof};
+use crate::{
+    circuit_key::CircuitKey,
+    instances::lcs::{verifying::LcsProof, LcsInstance},
+};
 use ark_ff::Field;
-use ccs::circuit::Circuit;
-use ccs::circuit::Prove;
-use ccs::witness::Witness;
+use ccs::{
+    circuit::{Circuit, Prove},
+    witness::Witness,
+};
 use commit::CommmitmentScheme;
 use sponge::sponge::Duplex;
-use transcript::protocols::Protocol;
-use transcript::{MessageGuard, TranscriptGuard};
 
 // TODO: make a proof type that is generic over a given circuit.
 
@@ -70,20 +71,5 @@ where
         let proof = self.lcs_key.prove(instance, witness.0, &mut transcript);
         transcript.finish().unwrap();
         proof
-    }
-
-    // TODO: Move into its own module.
-    pub fn verify(&self, instance: LcsInstance<F, CS, I>, proof: LcsProof<F, CS, IO, S>) -> bool {
-        let mut transcript = self.transcript.instanciate();
-        let result = {
-            let transcript = TranscriptGuard::new(&mut transcript, proof);
-            let instance = MessageGuard::new(instance);
-            LcsProver::verify(&self.lcs_key, instance, transcript)
-        };
-        transcript.finish().unwrap();
-        match result {
-            Ok(()) => true,
-            Err(()) => false,
-        }
     }
 }
