@@ -89,7 +89,7 @@ impl TranscriptBuilder {
 /// A finished and immutable transcript. It can no longer be changed,
 /// but it can be instantiated into a transcript to run the corresponding
 /// interaction.
-pub struct TranscriptDescriptor<F: Field, S: Duplex<F>> {
+pub(crate) struct TranscriptDescriptor<F: Field, S: Duplex<F>> {
     sponge: S::Initializer,
     rounds: Vec<Round>,
 }

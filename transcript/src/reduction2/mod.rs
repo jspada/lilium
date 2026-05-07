@@ -28,5 +28,5 @@ pub use prover::Prover;
 pub use reduction::{Argument, ProverOutput, Reduction};
 pub use relations::Relation;
 pub use transcript::{Guard, Transcript, VerifierTranscript};
-pub use transcript_builder::{TranscriptBuilder, TranscriptDescriptor};
+pub use transcript_builder::TranscriptBuilder;
 pub use verifier::Verifier;

@@ -1,6 +1,6 @@
 use crate::reduction2::{
-    transcript::VerifierTranscript, GuardedProof, Message, Reduction, Relation, TranscriptBuilder,
-    TranscriptDescriptor,
+    transcript::VerifierTranscript, transcript_builder::TranscriptDescriptor, GuardedProof,
+    Message, Reduction, Relation, TranscriptBuilder,
 };
 
 use ark_ff::Field;
