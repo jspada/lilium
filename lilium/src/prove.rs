@@ -68,7 +68,6 @@ where
     ) -> LcsProof<F, CS, IO, S> {
         let mut transcript = self.transcript.instanciate();
         let proof = self.lcs_key.prove(instance, witness.0, &mut transcript);
-        //TODO:handle
         transcript.finish().unwrap();
         proof
     }
