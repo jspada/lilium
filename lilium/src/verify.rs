@@ -13,6 +13,7 @@ where
     T: Duplex<F>,
     CS: CommmitmentScheme<F> + 'static,
 {
+    //TODO: output result instead.
     pub fn verify(&self, instance: LcsInstance<F, CS, I>, proof: LcsProof<F, CS, IO, S>) -> bool {
         let mut transcript = self.transcript.instanciate();
         let result = {
@@ -23,7 +24,7 @@ where
         transcript.finish().unwrap();
         match result {
             Ok(()) => true,
-            Err(()) => false,
+            Err(_) => false,
         }
     }
 }
