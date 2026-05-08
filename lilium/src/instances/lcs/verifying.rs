@@ -9,6 +9,7 @@ use crate::{
         linearized::proving::{LinearizedInstanceReduction, LinearizedProof},
     },
     proving::matrix_eval2::{MatrixEvalProof, MatrixEvalProtocol},
+    Error,
 };
 use ark_ff::Field;
 use commit::{
@@ -57,7 +58,7 @@ where
 
     type Proof = LcsProof<F, C, IO, S>;
 
-    type Error = ();
+    type Error = Error<F, C>;
 
     fn transcript_pattern(key: &Self::Key, builder: TranscriptBuilder) -> TranscriptBuilder {
         let vars = key.flcs_reduction_key.domain_vars;
@@ -89,43 +90,36 @@ where
                 &zerocheck_key,
                 instance,
                 transcript.new_guard(()),
-            );
-            //TODO:handle
-            MessageGuard::new(instance.unwrap())
+            )?;
+            MessageGuard::new(instance)
         };
         let flcs_reduction_proof =
             transcript.receive_message_delayed(|proof| proof.reduction_proof.clone());
-        //TODO:handle
         let reduced = FlcsReduction::verify_reduction(
             &key.flcs_reduction_key,
             instance,
             transcript.new_guard(flcs_reduction_proof),
-        )
-        .unwrap();
+        )?;
         let linearized_instance = reduced;
 
         let linearized_instance = MessageGuard::new(linearized_instance);
         let linearized_proof =
             transcript.receive_message_delayed(|proof| proof.linearized_proof.clone());
         let proof = linearized_proof;
-        //TODO: handle
         let reduced = LinearizedInstanceReduction::verify_reduction(
             &key.linearized_reduction_key,
             linearized_instance,
             transcript.new_guard(proof),
-        )
-        .unwrap();
+        )?;
         let (matrix_eval_instance, open_instances) = reduced;
 
         let matrix_eval_instance = MessageGuard::new(matrix_eval_instance);
         let proof = transcript.receive_message_delayed(|proof| proof.matrix_eval_proof.clone());
-        //TODO: handle
         let open_instance3 = MatrixEvalProtocol::verify_reduction(
             &key.matrix_eval_key,
             matrix_eval_instance,
             transcript.new_guard(proof),
-        )
-        .unwrap();
+        )?;
 
         let scheme = &key.pcs;
 
@@ -133,18 +127,17 @@ where
         let instance = [open_instance1, open_instance2, open_instance3];
         let instance = MessageGuard::new(instance);
         let proof = transcript.receive_message_delayed(|proof| proof.batching_proof.clone());
-        //TODO: handle
+
         let open_instance = MultipointBatching::verify_reduction(
             &key.batching,
             instance,
             transcript.new_guard(proof),
-        )
-        .unwrap();
+        )?;
 
         let proof = transcript.receive_message_delayed(|proof| proof.open_proof.clone());
         let instance = MessageGuard::new(open_instance);
-        //TODO: handle
-        C::verify(scheme, instance, transcript.new_guard(proof)).unwrap();
+
+        C::verify(scheme, instance, transcript.new_guard(proof)).map_err(Error::Pcs)?;
 
         Ok(())
     }
