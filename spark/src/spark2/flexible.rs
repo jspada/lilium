@@ -201,8 +201,7 @@ where
         mut transcript: TranscriptGuard<F, S, Self::Proof>,
     ) -> Result<Self::B, Self::Error> {
         use FlexibleSpark::*;
-        //TODO:handle
-        let (instance, []) = transcript.unwrap_guard(instance).unwrap();
+        let (instance, []) = transcript.unwrap_guard(instance)?;
         macro_rules! verify {
             ($variant:path,$key:ident) => {{
                 let instance = MessageGuard::new(instance.slice());
