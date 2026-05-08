@@ -36,7 +36,6 @@ impl<F: Field, const IO: usize, const S: usize> FlcsReductionKey<F, IO, S> {
         D: Duplex<F>,
         C: CommmitmentScheme<F> + 'static,
     {
-        //TODO: handle
         let [sumcheck_chall] = transcript.send_message(&instance).unwrap();
 
         let sumcheck_prover = &self.sumcheck_prover;
@@ -52,7 +51,6 @@ impl<F: Field, const IO: usize, const S: usize> FlcsReductionKey<F, IO, S> {
             &witness,
         );
 
-        //TODO: handle
         let ProverOutput {
             point,
             proof,
@@ -80,13 +78,11 @@ impl<F: Field, const IO: usize, const S: usize> FlcsReductionKey<F, IO, S> {
         };
 
         let selector_evals = linearized_instance.selector_evals.map(SingleElement);
-        //TODO: Handle
         let [] = transcript.send_message(&selector_evals).unwrap();
         let witness_eval = SingleElement(*evals.inner().w());
         let [] = transcript.send_message(&witness_eval).unwrap();
         let constants_eval = SingleElement(*evals.inner().constants());
         let [] = transcript.send_message(&constants_eval).unwrap();
-        //TODO: Handle
         let products = linearized_instance.products.map(SingleElement);
         let [] = transcript.send_message(&products).unwrap();
 
