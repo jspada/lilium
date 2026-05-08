@@ -30,8 +30,8 @@ where
         gates: Vec<Vec<Exp<usize>>>,
     ) -> Self {
         let domain_vars = structure.len().next_power_of_two().ilog2() as usize;
-        //TODO: expose option.
-        let sumcheck_function = LcsSumcheck::new(gates, false);
+        let multi_constraint = gates.iter().any(|constraints| constraints.len() > 1);
+        let sumcheck_function = LcsSumcheck::new(gates, multi_constraint);
         let structure = structure
             .iter()
             .map(|inner| {
