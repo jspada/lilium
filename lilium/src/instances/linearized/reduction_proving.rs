@@ -39,7 +39,6 @@ where
     where
         D: Duplex<F>,
     {
-        //TODO:handle
         let [chall] = transcript.send_message(&instance).unwrap();
         //TODO: Use all fields to check the results are as expected.
         let LinearizedInstance {
@@ -75,7 +74,6 @@ where
         let open_instance_ry = self.pcs.open_instance(witness_commit, ry.clone(), &witness);
         let w_eval_ry = SingleElement(open_instance_ry.eval());
 
-        //TODO: handle
         let [] = transcript.send_message(&w_eval_ry).unwrap();
 
         let (matrix_evals, matrix_eval_instance) = {
@@ -87,7 +85,6 @@ where
                 point: [rx, ry],
             };
             let matrix_evals = matrix_evals.map(SingleElement);
-            //TODO: handle
             let [] = transcript.send_message(&matrix_evals).unwrap();
 
             (matrix_evals, instance)
