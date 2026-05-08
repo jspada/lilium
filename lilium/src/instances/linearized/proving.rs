@@ -108,14 +108,14 @@ where
         let committed_open_instance: StructuredBatchEval<F, CS> =
             StructuredBatchEval::new(dynamic_batch, structured_evals);
         let instance = MessageGuard::new(committed_open_instance);
-        //TODO: handle
+
         let (open_instance_rx, evals) =
             CommittedStructure::<F, LcsSumcheck<F, IO, S>, CS>::verify_reduction(
                 &key.selector_commitments,
                 instance,
                 transcript.new_guard(()),
             )
-            .unwrap();
+            .map_err(crate::Error::Batching)?;
 
         for (i, eval) in evals.gate_selectors().iter().enumerate() {
             debug_assert_eq!(eval.unwrap(), selector_evals[i]);
