@@ -53,7 +53,6 @@ where
 {
     type Key = LcsProvingKey<F, C, IO, S>;
 
-    //TODO: add input size
     type Instance = LcsInstance<F, C, I>;
 
     type Proof = LcsProof<F, C, IO, S>;
