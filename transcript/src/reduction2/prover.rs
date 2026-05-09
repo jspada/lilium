@@ -1,6 +1,5 @@
 use crate::reduction2::{
     transcript_builder::TranscriptDescriptor, Message, ProverOutput, Reduction, Relation,
-    TranscriptBuilder,
 };
 use ark_ff::Field;
 use sponge::sponge::Duplex;
@@ -32,10 +31,10 @@ where
     pub fn new(structure_1: &R1::Structure, structure_2: &R2::Structure) -> Self {
         let (verifier_key, key) = R::key_pair(structure_1, structure_2);
 
-        let builder = TranscriptBuilder::new();
-        let builder = R::transcript_pattern(&verifier_key, builder);
+        let params = R::instance_params(&verifier_key);
 
-        let transcript_descriptor = builder.finish();
+        let transcript_descriptor =
+            TranscriptDescriptor::for_reduction::<R1, R2, R>(&verifier_key, params);
 
         Self {
             key,

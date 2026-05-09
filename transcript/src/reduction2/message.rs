@@ -3,7 +3,7 @@ use std::{any::Any, fmt::Debug};
 
 /// Any message must consist of a constant number of field elements,
 /// or a number which is function of some paramenters.
-pub trait Message<F>: Any {
+pub trait Message<F>: Any + Clone + Debug {
     /// The information needed to determine the length of the message.
     /// Use () if it is a constant.
     type Params;
@@ -27,6 +27,7 @@ pub trait Message<F>: Any {
 }
 
 /// Used internally to handle generating challenge points.
+#[derive(Clone, Copy, Debug)]
 pub(crate) struct PointRound;
 
 impl<F> Message<F> for PointRound {

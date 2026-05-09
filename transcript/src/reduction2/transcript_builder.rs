@@ -100,4 +100,21 @@ impl<F: Field, S: Duplex<F>> TranscriptDescriptor<F, S> {
         let rounds = self.rounds.clone().into_iter();
         Transcript::new(sponge, rounds)
     }
+
+    /// Creates a descriptor for the given reduction.
+    pub(crate) fn for_reduction<R1, R2, R>(
+        key: &R::VerifierKey,
+        instance_params: <R1::Instance as Message<F>>::Params,
+    ) -> Self
+    where
+        R1: Relation,
+        R1::Instance: Message<F>,
+        R2: Relation,
+        R: Reduction<F, R1, R2>,
+    {
+        TranscriptBuilder::new()
+            .round::<F, R1::Instance, 0>(instance_params)
+            .subprotocol::<R, F, R1, R2>(key)
+            .finish()
+    }
 }

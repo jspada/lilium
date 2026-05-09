@@ -1,7 +1,5 @@
 use super::Relation;
-use crate::reduction2::{
-    Guard, GuardedProof, Message, Transcript, TranscriptBuilder, VerifierTranscript,
-};
+use crate::reduction2::{GuardedProof, Message, Transcript, TranscriptBuilder, VerifierTranscript};
 use ark_ff::Field;
 use sponge::sponge::Duplex;
 use std::fmt::Debug;
@@ -30,6 +28,10 @@ where
 
     fn verifier_key(structure_1: &R1::Structure, structure_2: &R2::Structure) -> Self::VerifierKey;
 
+    fn instance_params(key: &Self::VerifierKey) -> <R1::Instance as Message<F>>::Params
+    where
+        R1::Instance: Message<F>;
+
     fn key_pair(
         structure_1: &R1::Structure,
         structure_2: &R2::Structure,
@@ -44,7 +46,7 @@ where
 
     fn verify<S: Duplex<F>>(
         key: &Self::VerifierKey,
-        instance: Guard<R1::Instance>,
+        instance: R1::Instance,
         proof: GuardedProof<Self::Proof>,
         transcript: &mut VerifierTranscript<F, S>,
     ) -> Result<R2::Instance, Self::Error>;

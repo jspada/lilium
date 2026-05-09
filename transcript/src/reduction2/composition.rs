@@ -1,7 +1,7 @@
 use super::{
     transcript::VerifierTranscript, GuardedProof, ProverOutput, Reduction, Relation, Transcript,
 };
-use crate::reduction2::{Guard, Message, TranscriptBuilder};
+use crate::reduction2::{Message, TranscriptBuilder};
 use ark_ff::Field;
 use sponge::sponge::Duplex;
 
@@ -76,6 +76,10 @@ where
         (verifier_key, prover_key)
     }
 
+    fn instance_params(key: &Self::VerifierKey) -> <R1::Instance as Message<F>>::Params {
+        A::instance_params(&key.a_key)
+    }
+
     fn prove<S: Duplex<F>>(
         key: &Self::ProverKey,
         instance: R1::Instance,
@@ -102,7 +106,7 @@ where
 
     fn verify<S: Duplex<F>>(
         key: &Self::VerifierKey,
-        instance: Guard<R1::Instance>,
+        instance: R1::Instance,
         proof: GuardedProof<Self::Proof>,
         transcript: &mut VerifierTranscript<F, S>,
     ) -> Result<R3::Instance, Self::Error> {
@@ -110,8 +114,6 @@ where
 
         let instance = A::verify(&key.a_key, instance, proof_a, transcript)
             .map_err(CompoundError::ErrorInA)?;
-
-        let instance = transcript.wrap(instance);
 
         let instance = B::verify(&key.b_key, instance, proof_b, transcript)
             .map_err(CompoundError::ErrorInB)?;

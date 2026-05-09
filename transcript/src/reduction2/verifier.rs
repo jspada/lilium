@@ -1,6 +1,6 @@
 use crate::reduction2::{
     transcript::VerifierTranscript, transcript_builder::TranscriptDescriptor, GuardedProof,
-    Message, Reduction, Relation, TranscriptBuilder,
+    Message, Reduction, Relation,
 };
 
 use ark_ff::Field;
@@ -20,6 +20,18 @@ where
     transcript_descriptor: TranscriptDescriptor<F, S>,
 }
 
+pub enum VerificationError<F, R1, R2, R>
+where
+    F: Field,
+    R1: Relation,
+    R1::Instance: Message<F>,
+    R2: Relation,
+    R: Reduction<F, R1, R2>,
+{
+    InvalidInstance(<R1::Instance as Message<F>>::Error),
+    ReductionError(R::Error),
+}
+
 impl<F, S, R1, R2, R> Verifier<F, S, R1, R2, R>
 where
     F: Field,
@@ -33,10 +45,9 @@ where
     pub fn new(structure_1: &R1::Structure, structure_2: &R2::Structure) -> Self {
         let key = R::verifier_key(structure_1, structure_2);
 
-        let builder = TranscriptBuilder::new();
-        let builder = R::transcript_pattern(&key, builder);
+        let params = R::instance_params(&key);
 
-        let transcript_descriptor = builder.finish();
+        let transcript_descriptor = TranscriptDescriptor::for_reduction::<R1, R2, R>(&key, params);
 
         Verifier {
             key,
@@ -49,14 +60,18 @@ where
         &self,
         instance: R1::Instance,
         proof: R::Proof,
-    ) -> Result<R2::Instance, R::Error> {
+    ) -> Result<R2::Instance, VerificationError<F, R1, R2, R>> {
         let transcript = self.transcript_descriptor.instanciate();
         let mut transcript = VerifierTranscript::<F, S>::new(transcript);
 
         let instance = transcript.wrap(instance);
+        let (instance, []) = transcript
+            .unwrap_guard(instance)
+            .map_err(VerificationError::InvalidInstance)?;
         let proof = GuardedProof::new(proof);
 
-        let reduced = R::verify(&self.key, instance, proof, &mut transcript);
+        let reduced = R::verify(&self.key, instance, proof, &mut transcript)
+            .map_err(VerificationError::ReductionError);
 
         // This shouldn't be possible through the public API.
         if let Err(err) = transcript.finish() {
