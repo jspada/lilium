@@ -9,6 +9,7 @@ pub mod folding;
 pub(crate) mod message;
 pub mod polynomials;
 pub mod sumcheck;
+pub mod sumcheck2;
 mod symbolic;
 mod tests;
 pub mod utils;
