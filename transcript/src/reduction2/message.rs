@@ -6,7 +6,7 @@ use std::{any::Any, fmt::Debug};
 pub trait Message<F>: Any + Clone + Debug {
     /// The information needed to determine the length of the message.
     /// Use () if it is a constant.
-    type Params;
+    type Params: Debug + Copy;
     // Possible error when converting element into field elements.
     type Error: Debug;
 
