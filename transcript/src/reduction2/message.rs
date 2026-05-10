@@ -43,3 +43,18 @@ impl<F> Message<F> for PointRound {
         Ok(vec![])
     }
 }
+
+impl<F> Message<F> for () {
+    type Params = ();
+
+    type Error = NoError;
+
+    fn len(_params: &()) -> usize {
+        0
+    }
+
+    fn to_field_elements(&self, expected_len: usize) -> Result<Vec<F>, Self::Error> {
+        assert_eq!(expected_len, 0);
+        Ok(vec![])
+    }
+}
