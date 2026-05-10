@@ -13,7 +13,7 @@ use transcript::reduction2::{
     VerifierTranscript,
 };
 
-mod oracles;
+pub mod oracles;
 
 pub use oracles::OracleQueryInstance;
 
