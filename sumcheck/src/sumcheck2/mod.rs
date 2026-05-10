@@ -1,5 +1,9 @@
 //! New sumcheck implementation based on the new Reduction.
-use crate::{barycentric_eval::BarycentricWeights, polynomials::MultiPoint};
+
+use crate::{
+    barycentric_eval::BarycentricWeights, polynomials::MultiPoint,
+    sumcheck2::oracles::QueryRelation,
+};
 use ark_ff::Field;
 use oracles::{Oracle, SumcheckFunction};
 use sponge::sponge::Duplex;
@@ -120,7 +124,7 @@ struct SumcheckVerifierKey<F: Field, O: Oracle<F>> {
     weights: BarycentricWeights<F>,
 }
 
-impl<F: Field, O: Oracle<F>> Reduction<F, SumcheckRelation<F, O>, O::QueryRelation>
+impl<F: Field, O: Oracle<F>> Reduction<F, SumcheckRelation<F, O>, QueryRelation<F, O>>
     for SumcheckReduction<F, O>
 {
     type ProverKey = O;
@@ -144,7 +148,7 @@ impl<F: Field, O: Oracle<F>> Reduction<F, SumcheckRelation<F, O>, O::QueryRelati
 
     fn verifier_key(
         structure_1: &O,
-        _structure_2: &<O::QueryRelation as Relation>::Structure,
+        _structure_2: &<QueryRelation<F, O> as Relation>::Structure,
     ) -> Self::VerifierKey {
         let vars = structure_1.vars();
         //TODO: Compute using the function
@@ -164,7 +168,7 @@ impl<F: Field, O: Oracle<F>> Reduction<F, SumcheckRelation<F, O>, O::QueryRelati
 
     fn key_pair(
         _structure_1: &O,
-        _structure_2: &<O::QueryRelation as Relation>::Structure,
+        _structure_2: &<QueryRelation<F, O> as Relation>::Structure,
     ) -> (Self::VerifierKey, Self::ProverKey) {
         todo!()
     }
@@ -183,7 +187,7 @@ impl<F: Field, O: Oracle<F>> Reduction<F, SumcheckRelation<F, O>, O::QueryRelati
         instance: SumcheckInstance<F, O>,
         proof: GuardedProof<Self::Proof>,
         transcript: &mut VerifierTranscript<F, S>,
-    ) -> Result<<O::QueryRelation as Relation>::Instance, Self::Error> {
+    ) -> Result<<QueryRelation<F, O> as Relation>::Instance, Self::Error> {
         let mut sum = instance.sum;
 
         let mut vars = vec![];
@@ -218,7 +222,7 @@ impl<F: Field, O: Oracle<F>> Reduction<F, SumcheckRelation<F, O>, O::QueryRelati
         _instance: <SumcheckRelation<F, O> as Relation>::Instance,
         _witness: <SumcheckRelation<F, O> as Relation>::Witness,
         _transcript: &mut Transcript<F, S>,
-    ) -> ProverOutput<O::QueryRelation, Self::Proof> {
+    ) -> ProverOutput<QueryRelation<F, O>, Self::Proof> {
         todo!()
     }
 }
