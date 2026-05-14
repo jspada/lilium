@@ -1,7 +1,7 @@
 use crate::{
     polynomials::MultiPoint,
     sumcheck2::{
-        oracles::{Oracle, SumcheckFunction},
+        oracles::{EvalLocation, Mles, Oracle, SumcheckFunction},
         SumcheckMessage,
     },
 };
@@ -15,6 +15,8 @@ pub struct ProverKey<F: Field, O: Oracle<F>> {
     //TODO: use Rc
     structure_evals: Vec<O::Evals<F>>,
     f: O::Function,
+    structure_filter: Mles<F, O, bool>,
+    instance_filter: Mles<F, O, bool>,
 }
 
 impl<F: Field, O: Oracle<F>> ProverKey<F, O> {
@@ -27,30 +29,42 @@ impl<F: Field, O: Oracle<F>> ProverKey<F, O> {
 
         let f = oracle.function().clone();
 
+        let natures = oracle.natures();
+        let natures = natures.into();
+
+        let structure_filter =
+            <O::Function as SumcheckFunction<F>>::map_evals(&natures, |nature: &O::Nature| {
+                let location: EvalLocation = (*nature).into();
+                matches!(location, EvalLocation::Structure)
+            });
+
+        let instance_filter =
+            <O::Function as SumcheckFunction<F>>::map_evals(&natures, |nature: &O::Nature| {
+                let location: EvalLocation = (*nature).into();
+                matches!(location, EvalLocation::Instance)
+            });
+
         Self {
             degree,
             vars,
             structure_evals,
             f,
+            structure_filter,
+            instance_filter,
         }
     }
 
-    fn structure_evals() -> <O::Function as SumcheckFunction<F>>::Mles<bool> {
-        todo!()
-    }
-
-    fn instance_evals() -> <O::Function as SumcheckFunction<F>>::Mles<bool> {
-        todo!()
-    }
-
     /// Merges evals from the structure, instance and witness.
-    fn merge_evals(witness: &mut O::Evals<F>, structure: &O::Evals<F>, instance: &O::Evals<F>) {
-        let filter = Self::structure_evals();
-
+    fn merge_evals(
+        &self,
+        witness: &mut O::Evals<F>,
+        structure: &O::Evals<F>,
+        instance: &O::Evals<F>,
+    ) {
         <O::Function as SumcheckFunction<F>>::combine_mut_conditional(
             witness,
             structure,
-            filter,
+            self.structure_filter.clone(),
             |w: &mut F, s: &F, is_structure| {
                 if is_structure {
                     *w = *s;
@@ -58,11 +72,10 @@ impl<F: Field, O: Oracle<F>> ProverKey<F, O> {
             },
         );
 
-        let filter = Self::instance_evals();
         <O::Function as SumcheckFunction<F>>::combine_mut_conditional(
             witness,
             instance,
-            filter,
+            self.instance_filter.clone(),
             |w: &mut F, i: &F, is_instance| {
                 if is_instance {
                     *w = *i;
@@ -107,7 +120,7 @@ impl<F: Field, O: Oracle<F>> ProverKey<F, O> {
         instance_evals: O::Evals<F>,
     ) -> Vec<O::Evals<F>> {
         for (witness, structure) in witness.iter_mut().zip(&self.structure_evals) {
-            Self::merge_evals(witness, structure, &instance_evals);
+            self.merge_evals(witness, structure, &instance_evals);
         }
         witness
     }
