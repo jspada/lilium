@@ -145,14 +145,33 @@ impl<F: Field, O: Oracle<F>> Relation for QueryRelation<F, O> {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+/// The location where the given multilinear polynomial is.
+/// It may be part of the structure, it may be part of the witness,
+/// or it may be part of the instance.
+/// The instance tends to be for degree 0 polynomials, like challenges.
+pub enum EvalLocation {
+    Structure,
+    Instance,
+    Witness,
+}
+
 pub trait Oracle<F: Field>: 'static + Clone + Debug
 where
     <Self::Instance as Message<F>>::Error: Clone,
 {
-    type Evals<V>: Evals<V>;
+    type Evals<V>: Evals<V> + From<Mles<F, Self, V>> + Into<Mles<F, Self, V>>;
     type Function: SumcheckFunction<F, Mles<F> = Self::Evals<F>>;
     type Instance: Message<F> + Clone;
     type Witness;
+
+    /// Each multilinear polynomial that goes into creating the multivariate
+    /// polynomial use in sumcheck has some nature.
+    /// Some may be part of the structure, some multilinear, some constant,
+    /// som may have a small representation, other be under a commitment.
+    /// Each oracle may have its own supported natures, the only thing they all
+    /// need to do is let sumcheck the location of each.
+    type Nature: Into<EvalLocation> + Copy + Debug;
 
     // many of these things would be better in the key than in the oracle.
     fn instance_evals(instance: &Self::Instance) -> Self::Evals<F>;
@@ -166,6 +185,8 @@ where
         instance: &Self::Instance,
         witness: &Self::Witness,
     ) -> Self::Evals<F>;
-
     fn witness_from_evals(evals: &[Self::Evals<F>]) -> Self::Witness;
+    fn natures(&self) -> Self::Evals<Self::Nature>;
 }
+
+pub type Mles<F, O, V> = <<O as Oracle<F>>::Function as SumcheckFunction<F>>::Mles<V>;

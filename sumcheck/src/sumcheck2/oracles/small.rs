@@ -1,7 +1,7 @@
 use crate::{
     polynomials::MultiPoint,
     sumcheck2::{
-        oracles::{Oracle, QueryRelation, SumcheckFunction},
+        oracles::{EvalLocation, Oracle, QueryRelation, SumcheckFunction},
         OracleQueryInstance,
     },
 };
@@ -48,6 +48,17 @@ impl<F: Field, SF: SumcheckFunction<F>> SmallEvalOracle<F, SF> {
     }
 }
 
+/// A polynomial with a small representation fixed in the
+/// structure
+#[derive(Clone, Copy, Debug)]
+pub struct SmallNature;
+
+impl From<SmallNature> for EvalLocation {
+    fn from(_value: SmallNature) -> Self {
+        EvalLocation::Structure
+    }
+}
+
 impl<F: Field, SF: SumcheckFunction<F>> Oracle<F> for SmallEvalOracle<F, SF> {
     type Evals<V> = SF::Mles<V>;
 
@@ -56,6 +67,8 @@ impl<F: Field, SF: SumcheckFunction<F>> Oracle<F> for SmallEvalOracle<F, SF> {
     type Instance = ();
 
     type Witness = ();
+
+    type Nature = SmallNature;
 
     fn mle(&self) -> &[Self::Evals<F>] {
         &self.evals_over_domain
@@ -80,9 +93,15 @@ impl<F: Field, SF: SumcheckFunction<F>> Oracle<F> for SmallEvalOracle<F, SF> {
     fn instance_evals(_instance: &()) -> Self::Evals<F> {
         Default::default()
     }
+
+    fn natures(&self) -> Self::Evals<Self::Nature> {
+        // We just take some random available value of type Self::Evals.
+        let evals = &self.evals_over_domain[0];
+        SF::map_evals(evals, |_| SmallNature)
+    }
 }
 
-/// An argument for the QuertRelation over the small oracle.
+/// An argument for the QueryRelation over the small oracle.
 pub struct SmallOracleArgument;
 
 type Rel<F, SF> = QueryRelation<F, SmallEvalOracle<F, SF>>;
