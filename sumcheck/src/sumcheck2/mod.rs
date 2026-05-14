@@ -15,6 +15,8 @@ use transcript::reduction2::{
 
 pub mod oracles;
 
+mod prove;
+
 pub use oracles::OracleQueryInstance;
 
 fn merge<A>(a: A, b: &A) -> A {
@@ -83,7 +85,7 @@ impl<F: Field, O: Oracle<F>> Relation for SumcheckRelation<F, O> {
 #[derive(Clone, Debug)]
 /// A message of the sumchecks protocol, represented as
 /// the evaluations of polynomial over the domain 0..d.
-struct SumcheckMessage<F>(Vec<F>);
+pub struct SumcheckMessage<F>(Vec<F>);
 
 impl<F: Field> SumcheckMessage<F> {
     fn to_message(&self) -> crate::message::Message<F> {
@@ -138,7 +140,7 @@ struct SumcheckVerifierKey<F: Field, O: Oracle<F>> {
 impl<F: Field, O: Oracle<F>> Reduction<F, SumcheckRelation<F, O>, QueryRelation<F, O>>
     for SumcheckReduction<F, O>
 {
-    type ProverKey = O;
+    type ProverKey = prove::ProverKey<F, O>;
 
     type VerifierKey = SumcheckVerifierKey<F, O>;
 
@@ -177,10 +179,12 @@ impl<F: Field, O: Oracle<F>> Reduction<F, SumcheckRelation<F, O>, QueryRelation<
     }
 
     fn key_pair(
-        _structure_1: &O,
-        _structure_2: &<QueryRelation<F, O> as Relation>::Structure,
+        structure_1: &O,
+        structure_2: &<QueryRelation<F, O> as Relation>::Structure,
     ) -> (Self::VerifierKey, Self::ProverKey) {
-        todo!()
+        let verifier_key = Self::verifier_key(structure_1, structure_2);
+        let prover_key = prove::ProverKey::new(structure_1);
+        (verifier_key, prover_key)
     }
 
     fn instance_params(
@@ -228,11 +232,28 @@ impl<F: Field, O: Oracle<F>> Reduction<F, SumcheckRelation<F, O>, QueryRelation<
     }
 
     fn prove<S: Duplex<F>>(
-        _key: &Self::ProverKey,
-        _instance: <SumcheckRelation<F, O> as Relation>::Instance,
-        _witness: <SumcheckRelation<F, O> as Relation>::Witness,
-        _transcript: &mut Transcript<F, S>,
+        key: &Self::ProverKey,
+        instance: SumcheckInstance<F, O>,
+        witness: Vec<O::Evals<F>>,
+        transcript: &mut Transcript<F, S>,
     ) -> ProverOutput<QueryRelation<F, O>, Self::Proof> {
-        todo!()
+        let oracle_witness = O::witness_from_evals(&witness);
+        let instance_evals = O::instance_evals(&instance.oracle_instance);
+        let (messages, point, eval) = key.prove(witness, transcript, instance_evals);
+
+        let instance = OracleQueryInstance {
+            oracle_instance: instance.oracle_instance,
+            point,
+            eval,
+        };
+
+        let proof = messages;
+
+        let witness = oracle_witness;
+        ProverOutput {
+            instance,
+            witness,
+            proof,
+        }
     }
 }

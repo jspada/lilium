@@ -72,7 +72,13 @@ impl<F: Field, SF: SumcheckFunction<F>> Oracle<F> for SmallEvalOracle<F, SF> {
     fn oracle_params(&self) -> <Self::Instance as Message<F>>::Params {}
 
     fn eval(&self, point: &MultiPoint<F>, _instance: &(), _witness: &()) -> Self::Evals<F> {
-        SF::map_evals(self.evals.clone(), |f| f(point))
+        SF::map_evals(&self.evals, |f| f(point))
+    }
+
+    fn witness_from_evals(_evals: &[Self::Evals<F>]) -> Self::Witness {}
+
+    fn instance_evals(_instance: &()) -> Self::Evals<F> {
+        Default::default()
     }
 }
 
