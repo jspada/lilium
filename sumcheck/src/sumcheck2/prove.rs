@@ -1,6 +1,7 @@
 use crate::{
     polynomials::MultiPoint,
     sumcheck2::{
+        degree,
         oracles::{EvalLocation, Mles, Oracle, SumcheckFunction},
         SumcheckMessage,
     },
@@ -22,8 +23,7 @@ pub struct ProverKey<F: Field, O: Oracle<F>> {
 impl<F: Field, O: Oracle<F>> ProverKey<F, O> {
     pub(crate) fn new(oracle: &O) -> Self {
         let vars = oracle.vars();
-        //TODO: Compute using the function
-        let degree: usize = 5;
+        let degree = degree::sumcheck_degree(oracle);
 
         let structure_evals = oracle.mle().to_vec();
 

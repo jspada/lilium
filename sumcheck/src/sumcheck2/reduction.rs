@@ -2,6 +2,7 @@ use crate::{
     barycentric_eval::BarycentricWeights,
     polynomials::MultiPoint,
     sumcheck2::{
+        degree,
         oracles::{Oracle, QueryRelation},
         prove, OracleQueryInstance, SumcheckInstance, SumcheckMessage, SumcheckRelation,
     },
@@ -90,8 +91,7 @@ impl<F: Field, O: Oracle<F>> Reduction<F, SumcheckRelation<F, O>, QueryRelation<
         _structure_2: &<QueryRelation<F, O> as Relation>::Structure,
     ) -> Self::VerifierKey {
         let vars = structure_1.vars();
-        //TODO: Compute using the function
-        let degree: usize = 5;
+        let degree = degree::sumcheck_degree(structure_1);
 
         let weights = BarycentricWeights::compute(degree as u32);
 
