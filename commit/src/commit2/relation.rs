@@ -1,9 +1,10 @@
 use crate::commit2::CommitmentSchemeCore;
 use ark_ff::Field;
-use std::fmt::Debug;
-use std::marker::PhantomData;
-use sumcheck::polynomials::{EvalsExt, MultiPoint, SingleEval};
-use sumcheck::sumcheck2::oracles::UnexpectedVars;
+use std::{fmt::Debug, marker::PhantomData};
+use sumcheck::{
+    polynomials::{EvalsExt, MultiPoint, SingleEval},
+    sumcheck2::oracles::UnexpectedVars,
+};
 use transcript::reduction2::{Message, Relation};
 
 /// For structure pcs.
