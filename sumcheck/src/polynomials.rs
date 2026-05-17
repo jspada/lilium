@@ -110,7 +110,7 @@ pub trait EvalsExt<F: Field>: Evals<F> + Sized {
         assert_eq!(
             mle.len().ilog2() as usize,
             point.vars(),
-            "number of variables missmatch"
+            "number of variables mismatch"
         );
         let (point, var) = point.pop();
         let mle = Self::fix_var(mle, var);

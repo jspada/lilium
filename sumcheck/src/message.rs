@@ -31,10 +31,10 @@ impl<F: Field> Message<F> {
     }
 
     pub(crate) fn new_degree_n(eval_at_0: F, eval_at_1: F, degree: usize) -> Self {
-        assert!(degree >= 1, "degree should be >= 0");
+        assert!(degree >= 1, "degree should be >= 1");
         // e0, e1
         // P(x) = (e1 - e0)x + e0
-        // TODO: it may be posible to exploit this structure further
+        // TODO: it may be possible to exploit this structure further
         let mut message = Vec::with_capacity(degree + 1);
         let diff = eval_at_1 - eval_at_0;
         let mut last = F::zero();

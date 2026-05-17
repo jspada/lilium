@@ -10,7 +10,7 @@ pub use reduction::SumcheckReduction;
 pub use relation::{SumcheckInstance, SumcheckRelation};
 
 #[derive(Clone, Debug)]
-/// A message of the sumchecks protocol, represented as
+/// A message of the sumcheck protocol, represented as
 /// the evaluations of polynomial over the domain 0..d.
 pub struct SumcheckMessage<F>(Vec<F>);
 

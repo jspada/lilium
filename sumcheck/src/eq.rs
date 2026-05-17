@@ -10,7 +10,7 @@
 //! differs from the previous one in only one bit, then we can use that
 //! previous element to compute the current one with only 1 multiplication
 //! to swap the bit in question.
-//! But a gray has the issue of a rather unpredictable memory access if used
+//! But a gray code has the issue of a rather unpredictable memory access if used
 //! as an index, or having to sort the result at the end. And it doens't seem
 //! to even be necessary.
 //!
