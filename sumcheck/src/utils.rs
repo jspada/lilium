@@ -3,7 +3,7 @@ use ark_ff::Field;
 
 pub use test_field::Fm;
 
-/// Should check sumcheck were the sum is zero
+/// Should check sumcheck where the sum is zero
 #[derive(Clone, Debug)]
 pub struct ZeroSumcheck<V>(pub V);
 /// Should check that the polynomial evaluates to 0 over the domain

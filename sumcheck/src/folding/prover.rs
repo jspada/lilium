@@ -59,7 +59,7 @@ impl<F: Field, SF: SumcheckFunction<F>> SumFold<F, SF> {
             }
         };
 
-        // Lock instance an generate challenge.
+        // Lock instance and generate challenge.
         let [beta] = transcript.send_message(&instance).unwrap();
 
         let eq_beta = Message::new_degree_n(F::one() - beta, beta, self.degree + 1);

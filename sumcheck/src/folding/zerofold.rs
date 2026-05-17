@@ -12,7 +12,7 @@ use ark_ff::Field;
 use sponge::sponge::Duplex;
 use transcript::Transcript;
 
-/// Speciallized `SumFold` prover for zerocheck, verification remains
+/// Specialized `SumFold` prover for zerocheck, verification remains
 /// as usual through `SumFold`, available at `ZeroFold::sumfold_key`.
 /// The main difference is that the message size increases by 1 for each
 /// variable, but the impact of such higher degree sumcheck in the prover

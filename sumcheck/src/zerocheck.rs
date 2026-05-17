@@ -330,7 +330,7 @@ where
 
     /// Fixes variables like `EvalsExt::fix_var` for the inner MLEs,
     /// But handles the zerocheck MLE differently, as it is the product of univariate
-    /// polynomials and just treated as a single MLE for convinience.
+    /// polynomials and just treated as a single MLE for convenience.
     fn fix_vars_custom(
         mut mle: Vec<ZeroCheckMles<F, I>>,
         shrinking_powers: &mut ShrinkingPowers<F>,
@@ -406,7 +406,7 @@ fn mle_equivalence_test<F: Field>(elems: Vec<F>) {
     for (fix, (b, c)) in fixes.iter().zip(powers.coefficients.clone()) {
         let eval = b * fix + c * (F::one() - fix);
         full_eval *= eval;
-        println!("feactor_eval: {}", eval)
+        println!("factor_eval: {}", eval)
     }
     let check_point = MultiPoint::new(fixes.to_vec());
     assert_eq!(full_eval, powers.point_eval(&check_point));

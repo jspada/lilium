@@ -39,7 +39,7 @@ pub trait Var<F: Field>:
 //type SumcheckResult<T> = Result<T, crate::SumcheckError>;
 
 // TODO: With symbolic evaluation now available, Env can move into a
-// concrete type supportting only symbolic expressions. And all other
+// concrete type supporting only symbolic expressions. And all other
 // environments be replaced with expression evaluation algorithms.
 /// allows access to variables
 pub trait Env<F, V, I, C>
@@ -486,7 +486,7 @@ impl<F: Field, SF: SumcheckFunction<F>> Reduction<F> for SumcheckVerifier<F, SF>
             sum = message.eval_at_x(r, &key.weights);
         }
         // as sumcheck handles the point in the opposite way
-        // TODO: stablish a stricter point representation.
+        // TODO: establish a stricter point representation.
         vars.reverse();
         let eval = sum;
         Ok(PolyEvalCheck { vars, eval })

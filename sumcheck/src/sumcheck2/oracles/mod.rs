@@ -166,9 +166,9 @@ where
     type Witness;
 
     /// Each multilinear polynomial that goes into creating the multivariate
-    /// polynomial use in sumcheck has some nature.
+    /// polynomial used in sumcheck has some nature.
     /// Some may be part of the structure, some multilinear, some constant,
-    /// som may have a small representation, other be under a commitment.
+    /// some may have a small representation, others may be under a commitment.
     /// Each oracle may have its own supported natures, the only thing they all
     /// need to do is let sumcheck the location of each.
     type Nature: Into<EvalLocation> + Copy + Debug;

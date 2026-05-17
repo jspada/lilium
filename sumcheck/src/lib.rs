@@ -20,9 +20,9 @@ pub use tests::TestSponge;
 
 #[derive(Debug, Clone)]
 pub enum SumcheckError {
-    /// A message had an incorrect degree
+    /// Message has incorrect degree
     MessageDegree,
-    /// The sum of both halves defers from the claimed sum
+    /// The sum of both halves differ from the claimed sum
     RoundSum,
     // Transcript error
     TranscriptError(transcript::Error),
