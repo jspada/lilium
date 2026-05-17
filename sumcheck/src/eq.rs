@@ -11,7 +11,7 @@
 //! previous element to compute the current one with only 1 multiplication
 //! to swap the bit in question.
 //! But a gray code has the issue of a rather unpredictable memory access if used
-//! as an index, or having to sort the result at the end. And it doens't seem
+//! as an index, or having to sort the result at the end. And it doesn't seem
 //! to even be necessary.
 //!
 //! The algorithem then looks like a gray code without the reversing part.

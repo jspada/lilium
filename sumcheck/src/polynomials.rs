@@ -3,7 +3,7 @@ use ark_ff::Field;
 use std::vec::IntoIter;
 use transcript::Message;
 
-///A point with `n` variables
+/// A point with `n` variables
 #[derive(Clone, Debug)]
 pub struct MultiPoint<F: Field>(Vec<F>);
 
@@ -73,7 +73,7 @@ impl<F: Field> MultiPoint<F> {
 pub trait Evals<V>: Sized + Clone {
     type Idx: Copy;
     fn index(&self, index: Self::Idx) -> &V;
-    ///should combine 2 [Self] into one by using `f` to combine each element
+    /// should combine 2 [Self] into one by using `f` to combine each element
     fn combine<C: Fn(V, V) -> V>(&self, other: &Self, f: C) -> Self;
     /// Flatten all elements into a vec, each element should be pushed into the vec.
     fn flatten(self, vec: &mut Vec<V>);
@@ -130,7 +130,7 @@ pub trait EvalsExt<F: Field>: Evals<F> + Sized {
         assert_eq!(
             mles.len().ilog2() as usize,
             point.vars(),
-            "number of variables missmatch"
+            "number of variables mismatch"
         );
         let eq: Vec<F> = eq(&point);
         let dummy = mles[0].clone().flatten_vec();
