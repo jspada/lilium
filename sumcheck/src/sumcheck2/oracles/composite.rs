@@ -1,0 +1,236 @@
+use crate::{
+    polynomials::{Evals, EvalsExt, MultiPoint},
+    sumcheck2::oracles::{EvalLocation, Oracle, SumcheckFunction},
+};
+use ark_ff::Field;
+use std::{fmt::Debug, marker::PhantomData, rc::Rc};
+use transcript::reduction2::{InherentParams, Message};
+
+#[derive(Clone, Copy, Debug)]
+pub enum Either<A, B> {
+    Left(A),
+    Right(B),
+}
+
+impl<A, B> From<Either<A, B>> for EvalLocation
+where
+    A: Into<EvalLocation>,
+    B: Into<EvalLocation>,
+{
+    fn from(value: Either<A, B>) -> Self {
+        match value {
+            Either::Left(a) => a.into(),
+            Either::Right(b) => b.into(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct OracleParams {
+    pub vars: usize,
+}
+
+pub trait PartialOracle<F, SF>: 'static + Clone + Debug
+where
+    F: Field,
+    SF: SumcheckFunction<F>,
+    <Self::Instance as Message<F>>::Error: Clone,
+{
+    type Instance: Message<F, Params = OracleParams> + InherentParams<F> + Clone;
+    type Witness;
+
+    type Nature: Into<EvalLocation> + Copy + Debug;
+
+    fn instance_evals(instance: &Self::Instance) -> SF::Mles<F>;
+    fn oracle_params(&self) -> <Self::Instance as Message<F>>::Params;
+    fn evals(&self, instance: &Self::Instance) -> SF::Mles<OracleEval<F>>;
+}
+
+pub enum OracleEval<F> {
+    Computed(F),
+    ProverProvided,
+    None,
+}
+
+pub struct PartialQueryRelation<F, N, SF>(PhantomData<(F, N, SF)>);
+
+#[derive(Clone, Debug)]
+pub struct CompositeOracle<F, SF, P1, P2>
+where
+    F: Field,
+    SF: SumcheckFunction<F>,
+    P1: PartialOracle<F, SF>,
+    P2: PartialOracle<F, SF>,
+{
+    f: SF,
+    mles: Rc<Vec<SF::Mles<F>>>,
+    vars: usize,
+    partial_oracle_1: P1,
+    partial_oracle_2: P2,
+}
+
+pub struct CompositeQueryRelation<F, SF, P1, P2>(PhantomData<(F, SF, P1, P2)>);
+
+#[derive(Clone, Copy, Debug)]
+pub struct CompositeOracleInstance<F, SF, P1, P2>
+where
+    F: Field,
+    SF: SumcheckFunction<F>,
+    P1: PartialOracle<F, SF>,
+    P2: PartialOracle<F, SF>,
+{
+    oracle1_instance: P1::Instance,
+    oracle2_instance: P2::Instance,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum CompositeError<F, P1: Message<F>, P2: Message<F>> {
+    Oracle1(P1::Error),
+    Oracle2(P2::Error),
+    UnexpectedLenght,
+}
+
+impl<F, SF, P1, P2> Message<F> for CompositeOracleInstance<F, SF, P1, P2>
+where
+    F: Field,
+    SF: SumcheckFunction<F>,
+    P1: PartialOracle<F, SF>,
+    P2: PartialOracle<F, SF>,
+{
+    type Params = OracleParams;
+
+    type Error = CompositeError<F, P1::Instance, P2::Instance>;
+
+    fn len(params: &Self::Params) -> usize {
+        P1::Instance::len(params) + P2::Instance::len(params)
+    }
+
+    fn to_field_elements(&self, expected_len: usize) -> Result<Vec<F>, Self::Error> {
+        use CompositeError::*;
+        let oracle1_len = P1::Instance::len(&self.oracle1_instance.params());
+        let oracle2_len = P2::Instance::len(&self.oracle2_instance.params());
+
+        let mut elems = self
+            .oracle1_instance
+            .to_field_elements(oracle1_len)
+            .map_err(Oracle1)?;
+
+        elems.extend(
+            self.oracle2_instance
+                .to_field_elements(expected_len)
+                .map_err(Oracle2)?,
+        );
+
+        if expected_len != oracle1_len + oracle2_len {
+            Err(UnexpectedLenght)
+        } else {
+            Ok(elems)
+        }
+    }
+}
+
+impl<F, SF, P1, P2> Oracle<F> for CompositeOracle<F, SF, P1, P2>
+where
+    F: Field,
+    SF: SumcheckFunction<F, Natures = Either<P1::Nature, P2::Nature>>,
+    P1: PartialOracle<F, SF>,
+    P2: PartialOracle<F, SF>,
+{
+    type Evals<V> = SF::Mles<V>;
+
+    type Function = SF;
+
+    type Instance = CompositeOracleInstance<F, SF, P1, P2>;
+
+    type Witness = Vec<SF::Mles<F>>;
+
+    type Nature = Either<P1::Nature, P2::Nature>;
+
+    fn instance_evals(instance: &Self::Instance) -> Self::Evals<F> {
+        let natures = SF::natures().flatten_vec();
+        let evals_oracle1 = P1::instance_evals(&instance.oracle1_instance).flatten_vec();
+        assert_eq!(natures.len(), evals_oracle1.len());
+        let evals_oracle2 = P2::instance_evals(&instance.oracle2_instance).flatten_vec();
+        assert_eq!(natures.len(), evals_oracle2.len());
+
+        let mut evals = vec![];
+
+        for ((o1, o2), nature) in evals_oracle1.into_iter().zip(evals_oracle2).zip(natures) {
+            let eval = match nature {
+                Either::Left(_) => o1,
+                Either::Right(_) => o2,
+            };
+            evals.push(eval);
+        }
+
+        SF::Mles::unflatten_vec(evals)
+    }
+
+    fn structure(&self) -> Rc<Vec<Self::Evals<F>>> {
+        Rc::clone(&self.mles)
+    }
+
+    fn function(&self) -> &Self::Function {
+        &self.f
+    }
+
+    fn vars(&self) -> usize {
+        self.vars
+    }
+
+    fn oracle_params(&self) -> <Self::Instance as Message<F>>::Params {
+        OracleParams { vars: self.vars }
+    }
+
+    fn eval(
+        &self,
+        point: &MultiPoint<F>,
+        instance: &Self::Instance,
+        witness: &Self::Witness,
+    ) -> Self::Evals<F> {
+        let natures = SF::natures();
+        let instance_evals = Self::instance_evals(instance);
+        // TODO: Evaluate only what's needed of each.
+        let witness_evals = EvalsExt::eval(witness, point.clone());
+        let structure_evals = EvalsExt::eval(&self.mles, point.clone());
+
+        let locations = SF::map_evals(&natures, |nature| match nature {
+            Either::Left(n) => (*n).into(),
+            Either::Right(n) => (*n).into(),
+        });
+
+        let evals = SF::combine(&instance_evals, &locations, |eval, location| {
+            if let EvalLocation::Instance = location {
+                *eval
+            } else {
+                F::ZERO
+            }
+        });
+
+        let evals = SF::combine3(
+            [&evals, &witness_evals],
+            &locations,
+            |eval, witness, location| match location {
+                EvalLocation::Structure | EvalLocation::Instance => *eval,
+                EvalLocation::Witness => *witness,
+            },
+        );
+
+        SF::combine3(
+            [&evals, &structure_evals],
+            &locations,
+            |eval, witness, location| match location {
+                EvalLocation::Witness | EvalLocation::Instance => *eval,
+                EvalLocation::Structure => *witness,
+            },
+        )
+    }
+
+    fn witness_from_evals(evals: &[Self::Evals<F>]) -> Self::Witness {
+        evals.to_vec()
+    }
+
+    fn natures(&self) -> Self::Evals<Self::Nature> {
+        SF::natures()
+    }
+}

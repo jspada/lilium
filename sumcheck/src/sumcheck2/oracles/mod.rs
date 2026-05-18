@@ -6,12 +6,16 @@ use ark_ff::Field;
 use std::{fmt::Debug, marker::PhantomData, rc::Rc};
 use transcript::reduction2::{Message, Relation};
 
+pub mod composite;
 pub mod small;
 
 /// The definition of a multivariate polynomial as some function
 /// of multilinear polynomials.
 pub trait SumcheckFunction<F: Field>: Debug + Clone + 'static {
     type Mles<V>: Evals<V> + Debug + Default;
+    type Natures;
+
+    fn natures() -> Self::Mles<Self::Natures>;
 
     fn map_evals<A, B, M>(evals: &Self::Mles<A>, f: M) -> Self::Mles<B>
     where
