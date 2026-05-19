@@ -82,6 +82,7 @@ where
     fn evals(instance: &Self::Instance, point: &MultiPoint<F>) -> SF::Mles<OracleEval<F>>;
 }
 
+#[derive(Clone, Copy, Debug)]
 pub enum OracleEval<F> {
     Computed(F),
     ProverProvided,
@@ -338,7 +339,7 @@ where
     P2: PartialOracle<F, SF>,
     <QueryRelation<F, Self> as Relation>::Instance: Message<F, Params = (OracleParams, usize)>,
 {
-    type ProverKey = ();
+    type ProverKey = CompositeReductionKey<F, SF>;
 
     type VerifierKey = CompositeReductionKey<F, SF>;
 
@@ -374,7 +375,61 @@ where
         witness: Vec<SF::Mles<F>>,
         transcript: &mut Transcript<F, S>,
     ) -> ProverOutput<PartialQueryRelation<F, SF, P1, P2>, Self::Proof> {
-        todo!()
+        let OracleQueryInstance {
+            oracle_instance,
+            point,
+            eval,
+        } = instance;
+        //PERF: This computation is a byproduct of sumcheck, it would be good
+        //to reuse it instead of recomputing it here.
+        let evals = EvalsExt::eval(&witness, point.clone());
+        assert_eq!(eval, key.f.function(&evals));
+
+        //NOTE: The call to P1::evals isn't strictcly necessary, but doing
+        //it this way allows to enforce several invariants about the partial
+        //oracles with what should be a negligile cost.
+        let evals1 = P1::evals(&oracle_instance.oracle1_instance, &point);
+        let evals1 = SF::combine(&evals, &evals1, |eval, query| match query {
+            OracleEval::Computed(e) => {
+                assert_eq!(e, eval);
+                None
+            }
+            OracleEval::ProverProvided => Some(*eval),
+            OracleEval::None => None,
+        });
+        let evals1: Vec<F> = evals1.flatten_vec().into_iter().flatten().collect();
+        //TODO: len should be in key
+        assert_eq!(evals1.len(), 0);
+
+        let evals2 = P2::evals(&oracle_instance.oracle2_instance, &point);
+        let evals2 = SF::combine(&evals, &evals2, |eval, query| match query {
+            OracleEval::Computed(e) => {
+                assert_eq!(e, eval);
+                None
+            }
+            OracleEval::ProverProvided => Some(*eval),
+            OracleEval::None => None,
+        });
+        let evals2: Vec<F> = evals2.flatten_vec().into_iter().flatten().collect();
+
+        //TODO: len should be in key
+        assert_eq!(evals2.len(), 0);
+
+        let instance1 = PartialQueryInstance::new(evals1.clone(), oracle_instance.oracle1_instance);
+        let instance2 = PartialQueryInstance::new(evals2.clone(), oracle_instance.oracle2_instance);
+        let instance = (instance1, instance2);
+
+        let mut prover_evals = ProverEvals(evals1);
+        prover_evals.0.extend(evals2);
+        let [] = transcript.send_message(&prover_evals);
+
+        let proof = prover_evals;
+
+        ProverOutput {
+            instance,
+            witness,
+            proof,
+        }
     }
 
     fn verify<S: Duplex<F>>(
