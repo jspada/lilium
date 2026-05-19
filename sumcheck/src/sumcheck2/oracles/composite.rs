@@ -38,6 +38,28 @@ pub struct OracleParams {
     pub vars: usize,
 }
 
+pub struct PartialQueryInstance<F, O> {
+    evals: Vec<F>,
+    oracle_instance: O,
+}
+
+impl<F, O> PartialQueryInstance<F, O> {
+    pub fn new(evals: Vec<F>, oracle_instance: O) -> Self {
+        Self {
+            evals,
+            oracle_instance,
+        }
+    }
+
+    pub fn evals(&self) -> &[F] {
+        &self.evals
+    }
+
+    pub fn oracle_instance(&self) -> &O {
+        &self.oracle_instance
+    }
+}
+
 pub trait PartialOracle<F, SF>: 'static + Clone + Debug
 where
     F: Field,
@@ -45,9 +67,15 @@ where
     <Self::Instance as Message<F>>::Error: Clone,
 {
     type Instance: Message<F, Params = OracleParams> + InherentParams<F> + Clone;
-    type Witness;
+    // type Witness;
 
     type Nature: Into<EvalLocation> + Copy + Debug;
+
+    type QueryRelation: Relation<
+        Structure = Self,
+        Instance = PartialQueryInstance<F, Self::Instance>,
+        Witness = Vec<SF::Mles<F>>,
+    >;
 
     fn instance_evals(instance: &Self::Instance) -> SF::Mles<F>;
     fn oracle_params(&self) -> <Self::Instance as Message<F>>::Params;
@@ -60,7 +88,34 @@ pub enum OracleEval<F> {
     None,
 }
 
-pub struct PartialQueryRelation<F, N, SF>(PhantomData<(F, N, SF)>);
+pub struct PartialQueryRelation<F, SF, P1, P2>(PhantomData<(F, SF, P1, P2)>);
+
+impl<F, SF, P1, P2> Relation for PartialQueryRelation<F, SF, P1, P2>
+where
+    F: Field,
+    SF: SumcheckFunction<F, Natures = Either<P1::Nature, P2::Nature>>,
+    P1: PartialOracle<F, SF>,
+    P2: PartialOracle<F, SF>,
+{
+    type Structure = (P1, P2);
+
+    type Instance = (
+        PartialQueryInstance<F, P1::Instance>,
+        PartialQueryInstance<F, P2::Instance>,
+    );
+
+    type Witness = Vec<SF::Mles<F>>;
+
+    fn check(
+        structure: &Self::Structure,
+        instance: &Self::Instance,
+        witness: &Self::Witness,
+    ) -> bool {
+        let check1 = P1::QueryRelation::check(&structure.0, &instance.0, witness);
+        let check2 = P2::QueryRelation::check(&structure.1, &instance.1, witness);
+        check1 && check2
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct CompositeOracle<F, SF, P1, P2>
@@ -274,7 +329,8 @@ impl<F: Field> Message<F> for ProverEvals<F> {
     }
 }
 
-impl<F, SF, P1, P2> Reduction<F, QueryRelation<F, Self>, ()> for CompositeOracle<F, SF, P1, P2>
+impl<F, SF, P1, P2> Reduction<F, QueryRelation<F, Self>, PartialQueryRelation<F, SF, P1, P2>>
+    for CompositeOracle<F, SF, P1, P2>
 where
     F: Field,
     SF: SumcheckFunction<F, Natures = Either<P1::Nature, P2::Nature>>,
@@ -297,10 +353,7 @@ where
         builder.round::<F, ProverEvals<F>, 0>(key.oracle1_evals + key.oracle2_evals)
     }
 
-    fn verifier_key(
-        structure_1: &Self,
-        structure_2: &<() as Relation>::Structure,
-    ) -> Self::VerifierKey {
+    fn verifier_key(structure_1: &Self, structure_2: &(P1, P2)) -> Self::VerifierKey {
         todo!()
     }
 
@@ -310,7 +363,7 @@ where
 
     fn key_pair(
         structure_1: &Self,
-        structure_2: &<() as Relation>::Structure,
+        structure_2: &(P1, P2),
     ) -> (Self::VerifierKey, Self::ProverKey) {
         todo!()
     }
@@ -320,7 +373,7 @@ where
         instance: OracleQueryInstance<F, CompositeOracleInstance<F, SF, P1, P2>>,
         witness: Vec<SF::Mles<F>>,
         transcript: &mut Transcript<F, S>,
-    ) -> ProverOutput<(), Self::Proof> {
+    ) -> ProverOutput<PartialQueryRelation<F, SF, P1, P2>, Self::Proof> {
         todo!()
     }
 
@@ -329,7 +382,7 @@ where
         instance: OracleQueryInstance<F, CompositeOracleInstance<F, SF, P1, P2>>,
         proof: GuardedProof<Self::Proof>,
         transcript: &mut VerifierTranscript<F, S>,
-    ) -> Result<<() as Relation>::Instance, Self::Error> {
+    ) -> Result<<PartialQueryRelation<F, SF, P1, P2> as Relation>::Instance, Self::Error> {
         let OracleQueryInstance {
             oracle_instance,
             point,
@@ -340,6 +393,10 @@ where
         let ProverEvals(prover_evals) = prover_evals;
 
         assert_eq!(prover_evals.len(), key.oracle1_evals + key.oracle2_evals);
+
+        let instance1 = prover_evals[0..key.oracle1_evals].to_vec();
+        let instance2 = prover_evals[key.oracle1_evals..].to_vec();
+
         let mut prover_evals = prover_evals.into_iter();
 
         let evals1 = P1::evals(&oracle_instance.oracle1_instance, &point);
@@ -379,8 +436,9 @@ where
         let eval = key.f.function(&evals);
 
         if eval == expected_eval {
-            //TODO: return the reduced instances
-            Ok(())
+            let instance1 = PartialQueryInstance::new(instance1, oracle_instance.oracle1_instance);
+            let instance2 = PartialQueryInstance::new(instance2, oracle_instance.oracle2_instance);
+            Ok((instance1, instance2))
         } else {
             todo!()
         }
