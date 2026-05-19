@@ -68,6 +68,7 @@ where
 {
     type Instance: Message<F, Params = OracleParams> + InherentParams<F> + Clone;
     // type Witness;
+    type VerifierKey: From<Self> + Clone;
 
     type Nature: Into<EvalLocation> + Copy + Debug;
 
@@ -79,7 +80,11 @@ where
 
     fn instance_evals(instance: &Self::Instance) -> SF::Mles<F>;
     fn oracle_params(&self) -> <Self::Instance as Message<F>>::Params;
-    fn evals(instance: &Self::Instance, point: &MultiPoint<F>) -> SF::Mles<OracleEval<F>>;
+    fn evals(
+        key: &Self::VerifierKey,
+        instance: &Self::Instance,
+        point: &MultiPoint<F>,
+    ) -> SF::Mles<OracleEval<F>>;
     fn prover_provided(nature: &Self::Nature) -> bool;
 }
 
@@ -131,8 +136,8 @@ where
     mles: Rc<Vec<SF::Mles<F>>>,
     vars: usize,
     _p: PhantomData<(P1, P2)>,
-    //partial_oracle_1: P1,
-    //partial_oracle_2: P2,
+    partial_oracle1: P1,
+    partial_oracle2: P2,
 }
 
 pub struct CompositeQueryRelation<F, SF, P1, P2>(PhantomData<(F, SF, P1, P2)>);
@@ -302,13 +307,18 @@ where
 }
 
 #[derive(Clone, Debug)]
-pub struct CompositeReductionKey<F: Field, SF: SumcheckFunction<F>> {
+pub struct CompositeReductionKey<F: Field, SF: SumcheckFunction<F>, P1, P2>
+where
+    P1: PartialOracle<F, SF>,
+    P2: PartialOracle<F, SF>,
+{
     // Number of evals provided to the oracle be the prover
     // and to be verified through some reduction.
     oracle1_evals: usize,
     oracle2_evals: usize,
     f: SF,
-    _field: PhantomData<F>,
+    oracle1_key: P1::VerifierKey,
+    oracle2_key: P2::VerifierKey,
 }
 
 #[derive(Clone, Debug)]
@@ -342,9 +352,9 @@ where
     P2: PartialOracle<F, SF>,
     <QueryRelation<F, Self> as Relation>::Instance: Message<F, Params = (OracleParams, usize)>,
 {
-    type ProverKey = CompositeReductionKey<F, SF>;
+    type ProverKey = CompositeReductionKey<F, SF, P1, P2>;
 
-    type VerifierKey = CompositeReductionKey<F, SF>;
+    type VerifierKey = CompositeReductionKey<F, SF, P1, P2>;
 
     type Proof = ProverEvals<F>;
 
@@ -375,11 +385,14 @@ where
             }
         }
         let f = oracle.f.clone();
+        let oracle1_key = From::from(oracle.partial_oracle1.clone());
+        let oracle2_key = From::from(oracle.partial_oracle2.clone());
         CompositeReductionKey {
             oracle1_evals,
             oracle2_evals,
             f,
-            _field: PhantomData,
+            oracle1_key,
+            oracle2_key,
         }
     }
 
@@ -414,7 +427,7 @@ where
         //NOTE: The call to P1::evals isn't strictcly necessary, but doing
         //it this way allows to enforce several invariants about the partial
         //oracles with what should be a negligile cost.
-        let evals1 = P1::evals(&oracle_instance.oracle1_instance, &point);
+        let evals1 = P1::evals(&key.oracle1_key, &oracle_instance.oracle1_instance, &point);
         let evals1 = SF::combine(&evals, &evals1, |eval, query| match query {
             OracleEval::Computed(e) => {
                 assert_eq!(e, eval);
@@ -426,7 +439,7 @@ where
         let evals1: Vec<F> = evals1.flatten_vec().into_iter().flatten().collect();
         assert_eq!(evals1.len(), key.oracle1_evals);
 
-        let evals2 = P2::evals(&oracle_instance.oracle2_instance, &point);
+        let evals2 = P2::evals(&key.oracle2_key, &oracle_instance.oracle2_instance, &point);
         let evals2 = SF::combine(&evals, &evals2, |eval, query| match query {
             OracleEval::Computed(e) => {
                 assert_eq!(e, eval);
@@ -478,7 +491,7 @@ where
 
         let mut prover_evals = prover_evals.into_iter();
 
-        let evals1 = P1::evals(&oracle_instance.oracle1_instance, &point);
+        let evals1 = P1::evals(&key.oracle1_key, &oracle_instance.oracle1_instance, &point);
         let evals1 = evals1.flatten_vec().into_iter().map(|eval| match eval {
             OracleEval::Computed(e) => Some(e),
             // This Some(x.unwrap()) is desired in this case.
@@ -488,7 +501,7 @@ where
         let evals1 = SF::Mles::unflatten_vec(evals1.collect());
         assert_eq!(prover_evals.len(), key.oracle2_evals);
 
-        let evals2 = P2::evals(&oracle_instance.oracle2_instance, &point);
+        let evals2 = P2::evals(&key.oracle2_key, &oracle_instance.oracle2_instance, &point);
         let evals2 = evals2.flatten_vec().into_iter().map(|eval| match eval {
             OracleEval::Computed(e) => Some(e),
             OracleEval::ProverProvided => Some(prover_evals.next().unwrap()),
