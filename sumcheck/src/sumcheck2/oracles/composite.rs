@@ -124,14 +124,15 @@ pub struct CompositeOracle<F, SF, P1, P2>
 where
     F: Field,
     SF: SumcheckFunction<F>,
-    P1: PartialOracle<F, SF>,
-    P2: PartialOracle<F, SF>,
+    //P1: PartialOracle<F, SF>,
+    //P2: PartialOracle<F, SF>,
 {
     f: SF,
     mles: Rc<Vec<SF::Mles<F>>>,
     vars: usize,
-    partial_oracle_1: P1,
-    partial_oracle_2: P2,
+    _p: PhantomData<(P1, P2)>,
+    //partial_oracle_1: P1,
+    //partial_oracle_2: P2,
 }
 
 pub struct CompositeQueryRelation<F, SF, P1, P2>(PhantomData<(F, SF, P1, P2)>);
@@ -382,7 +383,7 @@ where
         }
     }
 
-    fn instance_params(key: &Self::VerifierKey) -> (OracleParams, usize) {
+    fn instance_params(_key: &Self::VerifierKey) -> (OracleParams, usize) {
         todo!()
     }
 
