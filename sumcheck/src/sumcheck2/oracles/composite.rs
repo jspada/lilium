@@ -51,7 +51,7 @@ where
 
     fn instance_evals(instance: &Self::Instance) -> SF::Mles<F>;
     fn oracle_params(&self) -> <Self::Instance as Message<F>>::Params;
-    fn evals(&self, instance: &Self::Instance, point: &MultiPoint<F>) -> SF::Mles<OracleEval<F>>;
+    fn evals(instance: &Self::Instance, point: &MultiPoint<F>) -> SF::Mles<OracleEval<F>>;
 }
 
 pub enum OracleEval<F> {
@@ -243,9 +243,7 @@ where
     }
 }
 
-pub struct CompositeReductionKey<F: Field, SF: SumcheckFunction<F>, P1, P2> {
-    oracle1: P1,
-    oracle2: P2,
+pub struct CompositeReductionKey<F: Field, SF: SumcheckFunction<F>> {
     // Number of evals provided to the oracle be the prover
     // and to be verified through some reduction.
     oracle1_evals: usize,
@@ -286,7 +284,7 @@ where
 {
     type ProverKey = ();
 
-    type VerifierKey = CompositeReductionKey<F, SF, P1, P2>;
+    type VerifierKey = CompositeReductionKey<F, SF>;
 
     type Proof = ProverEvals<F>;
 
@@ -344,7 +342,7 @@ where
         assert_eq!(prover_evals.len(), key.oracle1_evals + key.oracle2_evals);
         let mut prover_evals = prover_evals.into_iter();
 
-        let evals1 = key.oracle1.evals(&oracle_instance.oracle1_instance, &point);
+        let evals1 = P1::evals(&oracle_instance.oracle1_instance, &point);
         let evals1 = evals1.flatten_vec().into_iter().map(|eval| match eval {
             OracleEval::Computed(e) => Some(e),
             // This Some(x.unwrap()) is desired in this case.
@@ -354,7 +352,7 @@ where
         let evals1 = SF::Mles::unflatten_vec(evals1.collect());
         assert_eq!(prover_evals.len(), key.oracle2_evals);
 
-        let evals2 = key.oracle2.evals(&oracle_instance.oracle2_instance, &point);
+        let evals2 = P2::evals(&oracle_instance.oracle2_instance, &point);
         let evals2 = evals2.flatten_vec().into_iter().map(|eval| match eval {
             OracleEval::Computed(e) => Some(e),
             OracleEval::ProverProvided => Some(prover_evals.next().unwrap()),
