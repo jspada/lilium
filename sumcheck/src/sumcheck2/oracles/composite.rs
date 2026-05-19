@@ -1,10 +1,18 @@
 use crate::{
     polynomials::{Evals, EvalsExt, MultiPoint},
-    sumcheck2::oracles::{EvalLocation, Oracle, SumcheckFunction},
+    sumcheck2::{
+        oracles::{EvalLocation, Oracle, QueryRelation, SumcheckFunction},
+        OracleQueryInstance,
+    },
 };
 use ark_ff::Field;
+use core::panic;
+use sponge::sponge::Duplex;
 use std::{fmt::Debug, marker::PhantomData, rc::Rc};
-use transcript::reduction2::{InherentParams, Message};
+use transcript::reduction2::{
+    GuardedProof, InherentParams, Message, ProverOutput, Reduction, Relation, Transcript,
+    TranscriptBuilder, VerifierTranscript,
+};
 
 #[derive(Clone, Copy, Debug)]
 pub enum Either<A, B> {
@@ -232,5 +240,130 @@ where
 
     fn natures(&self) -> Self::Evals<Self::Nature> {
         SF::natures()
+    }
+}
+
+pub struct CompositeReductionKey<F: Field, SF: SumcheckFunction<F>, P1, P2> {
+    oracle1: P1,
+    oracle2: P2,
+    // Number of evals provided to the oracle be the prover
+    // and to be verified through some reduction.
+    oracle1_evals: usize,
+    oracle2_evals: usize,
+    f: SF,
+    _field: PhantomData<F>,
+}
+
+impl<F, SF, P1, P2> Reduction<F, QueryRelation<F, Self>, ()> for CompositeOracle<F, SF, P1, P2>
+where
+    F: Field,
+    SF: SumcheckFunction<F, Natures = Either<P1::Nature, P2::Nature>>,
+    P1: PartialOracle<F, SF>,
+    P2: PartialOracle<F, SF>,
+    <QueryRelation<F, Self> as Relation>::Instance: Message<F, Params = (OracleParams, usize)>,
+{
+    type ProverKey = ();
+
+    //TODO: use actual keys without big structures
+    type VerifierKey = CompositeReductionKey<F, SF, P1, P2>;
+
+    type Proof = ();
+
+    type Error = ();
+
+    fn transcript_pattern(
+        key: &Self::VerifierKey,
+        builder: TranscriptBuilder,
+    ) -> TranscriptBuilder {
+        todo!()
+    }
+
+    fn verifier_key(
+        structure_1: &Self,
+        structure_2: &<() as Relation>::Structure,
+    ) -> Self::VerifierKey {
+        todo!()
+    }
+
+    fn instance_params(key: &Self::VerifierKey) -> (OracleParams, usize) {
+        todo!()
+    }
+
+    fn key_pair(
+        structure_1: &Self,
+        structure_2: &<() as Relation>::Structure,
+    ) -> (Self::VerifierKey, Self::ProverKey) {
+        todo!()
+    }
+
+    fn prove<S: Duplex<F>>(
+        key: &Self::ProverKey,
+        instance: OracleQueryInstance<F, CompositeOracleInstance<F, SF, P1, P2>>,
+        witness: Vec<SF::Mles<F>>,
+        transcript: &mut Transcript<F, S>,
+    ) -> ProverOutput<(), Self::Proof> {
+        todo!()
+    }
+
+    fn verify<S: Duplex<F>>(
+        key: &Self::VerifierKey,
+        instance: OracleQueryInstance<F, CompositeOracleInstance<F, SF, P1, P2>>,
+        proof: GuardedProof<Self::Proof>,
+        transcript: &mut VerifierTranscript<F, S>,
+    ) -> Result<<() as Relation>::Instance, Self::Error> {
+        let OracleQueryInstance {
+            oracle_instance,
+            point,
+            eval: expected_eval,
+        } = instance;
+
+        // TODO:provide and handle
+        // let (prover_evals, []) = transcript.receive_message(|proof| vec![], &proof).unwrap();
+        let prover_evals: Vec<F> = vec![];
+        assert_eq!(prover_evals.len(), key.oracle1_evals + key.oracle2_evals);
+        let mut prover_evals = prover_evals.into_iter();
+
+        let evals1 = key.oracle1.evals(&oracle_instance.oracle1_instance);
+        let evals1 = evals1.flatten_vec().into_iter().map(|eval| match eval {
+            OracleEval::Computed(e) => Some(e),
+            // This Some(x.unwrap()) is desired in this case.
+            OracleEval::ProverProvided => Some(prover_evals.next().unwrap()),
+            OracleEval::None => None,
+        });
+        let evals1 = SF::Mles::unflatten_vec(evals1.collect());
+        assert_eq!(prover_evals.len(), key.oracle2_evals);
+
+        let evals2 = key.oracle2.evals(&oracle_instance.oracle2_instance);
+        let evals2 = evals2.flatten_vec().into_iter().map(|eval| match eval {
+            OracleEval::Computed(e) => Some(e),
+            OracleEval::ProverProvided => Some(prover_evals.next().unwrap()),
+            OracleEval::None => None,
+        });
+        let evals2 = SF::Mles::unflatten_vec(evals2.collect());
+
+        let natures = SF::natures();
+        let evals = SF::combine3([&evals1, &evals2], &natures, |eval1, eval2, nature| {
+            match (eval1, eval2, nature) {
+                // (None, None, Either::Left(_)) => todo!(),
+                // (None, None, Either::Right(_)) => todo!(),
+                // (None, Some(_), Either::Left(_)) => todo!(),
+                (None, Some(e), Either::Right(_)) => *e,
+                (Some(e), None, Either::Left(_)) => *e,
+                // (Some(_), None, Either::Right(_)) => todo!(),
+                // (Some(_), Some(_), Either::Left(_)) => todo!(),
+                // (Some(_), Some(_), Either::Right(_)) => todo!(),
+                _ => panic!("Incorrect oracle answered query, or correct oracle fail to answer"),
+            }
+        });
+        assert_eq!(prover_evals.len(), 0);
+
+        let eval = key.f.function(&evals);
+
+        if eval == expected_eval {
+            //TODO: return the reduced instances
+            Ok(())
+        } else {
+            todo!()
+        }
     }
 }
