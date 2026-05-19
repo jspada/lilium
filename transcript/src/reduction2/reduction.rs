@@ -11,10 +11,7 @@ pub struct ProverOutput<R: Relation, P> {
 }
 
 /// A reduction from relation R1 to R2.
-pub trait Reduction<F: Field, R1: Relation, R2: Relation>
-where
-    R1::Instance: Message<F>,
-{
+pub trait Reduction<F: Field, R1: Relation, R2: Relation> {
     type ProverKey;
     type VerifierKey;
     type Proof: Clone;
@@ -53,8 +50,4 @@ where
 }
 
 /// An argument is just a reduction where the target relation is unit.
-pub trait Argument<F: Field, R: Relation>: Reduction<F, R, ()>
-where
-    R::Instance: Message<F>,
-{
-}
+pub trait Argument<F: Field, R: Relation>: Reduction<F, R, ()> {}
