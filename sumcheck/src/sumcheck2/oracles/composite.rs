@@ -51,7 +51,7 @@ where
 
     fn instance_evals(instance: &Self::Instance) -> SF::Mles<F>;
     fn oracle_params(&self) -> <Self::Instance as Message<F>>::Params;
-    fn evals(&self, instance: &Self::Instance) -> SF::Mles<OracleEval<F>>;
+    fn evals(&self, instance: &Self::Instance, point: &MultiPoint<F>) -> SF::Mles<OracleEval<F>>;
 }
 
 pub enum OracleEval<F> {
@@ -254,6 +254,28 @@ pub struct CompositeReductionKey<F: Field, SF: SumcheckFunction<F>, P1, P2> {
     _field: PhantomData<F>,
 }
 
+#[derive(Clone, Debug)]
+/// All evaluations provided by the prover to the 2 oracles.
+pub struct ProverEvals<F>(Vec<F>);
+
+impl<F: Field> Message<F> for ProverEvals<F> {
+    type Params = usize;
+
+    type Error = ();
+
+    fn len(params: &Self::Params) -> usize {
+        *params
+    }
+
+    fn to_field_elements(&self, expected_len: usize) -> Result<Vec<F>, Self::Error> {
+        if self.0.len() == expected_len {
+            Ok(self.0.clone())
+        } else {
+            Err(())
+        }
+    }
+}
+
 impl<F, SF, P1, P2> Reduction<F, QueryRelation<F, Self>, ()> for CompositeOracle<F, SF, P1, P2>
 where
     F: Field,
@@ -264,10 +286,9 @@ where
 {
     type ProverKey = ();
 
-    //TODO: use actual keys without big structures
     type VerifierKey = CompositeReductionKey<F, SF, P1, P2>;
 
-    type Proof = ();
+    type Proof = ProverEvals<F>;
 
     type Error = ();
 
@@ -275,7 +296,7 @@ where
         key: &Self::VerifierKey,
         builder: TranscriptBuilder,
     ) -> TranscriptBuilder {
-        todo!()
+        builder.round::<F, ProverEvals<F>, 0>(key.oracle1_evals + key.oracle2_evals)
     }
 
     fn verifier_key(
@@ -317,13 +338,13 @@ where
             eval: expected_eval,
         } = instance;
 
-        // TODO:provide and handle
-        // let (prover_evals, []) = transcript.receive_message(|proof| vec![], &proof).unwrap();
-        let prover_evals: Vec<F> = vec![];
+        let (prover_evals, []) = transcript.receive_message(|proof| proof.clone(), &proof)?;
+        let ProverEvals(prover_evals) = prover_evals;
+
         assert_eq!(prover_evals.len(), key.oracle1_evals + key.oracle2_evals);
         let mut prover_evals = prover_evals.into_iter();
 
-        let evals1 = key.oracle1.evals(&oracle_instance.oracle1_instance);
+        let evals1 = key.oracle1.evals(&oracle_instance.oracle1_instance, &point);
         let evals1 = evals1.flatten_vec().into_iter().map(|eval| match eval {
             OracleEval::Computed(e) => Some(e),
             // This Some(x.unwrap()) is desired in this case.
@@ -333,7 +354,7 @@ where
         let evals1 = SF::Mles::unflatten_vec(evals1.collect());
         assert_eq!(prover_evals.len(), key.oracle2_evals);
 
-        let evals2 = key.oracle2.evals(&oracle_instance.oracle2_instance);
+        let evals2 = key.oracle2.evals(&oracle_instance.oracle2_instance, &point);
         let evals2 = evals2.flatten_vec().into_iter().map(|eval| match eval {
             OracleEval::Computed(e) => Some(e),
             OracleEval::ProverProvided => Some(prover_evals.next().unwrap()),
