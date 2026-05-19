@@ -398,8 +398,7 @@ where
             OracleEval::None => None,
         });
         let evals1: Vec<F> = evals1.flatten_vec().into_iter().flatten().collect();
-        //TODO: len should be in key
-        assert_eq!(evals1.len(), 0);
+        assert_eq!(evals1.len(), key.oracle1_evals);
 
         let evals2 = P2::evals(&oracle_instance.oracle2_instance, &point);
         let evals2 = SF::combine(&evals, &evals2, |eval, query| match query {
@@ -412,8 +411,7 @@ where
         });
         let evals2: Vec<F> = evals2.flatten_vec().into_iter().flatten().collect();
 
-        //TODO: len should be in key
-        assert_eq!(evals2.len(), 0);
+        assert_eq!(evals2.len(), key.oracle2_evals);
 
         let instance1 = PartialQueryInstance::new(evals1.clone(), oracle_instance.oracle1_instance);
         let instance2 = PartialQueryInstance::new(evals2.clone(), oracle_instance.oracle2_instance);
