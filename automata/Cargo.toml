@@ -7,3 +7,6 @@ repository = "https://github.com/fabrizio-m/lilium"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
+
+[lib]
+bench = false

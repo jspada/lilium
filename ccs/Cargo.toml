@@ -14,3 +14,5 @@ ark-ff = "0.4"
 [dev-dependencies]
 ark-vesta = "0.4.0"
 
+[lib]
+bench = false

@@ -13,3 +13,6 @@ ark-vesta = "0.4"
 
 [dev-dependencies]
 rand = "0.8"
+
+[lib]
+bench = false

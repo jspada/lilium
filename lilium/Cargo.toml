@@ -21,10 +21,15 @@ ark-vesta = { version = "0.4", optional = true }
 rand = "0.8"
 ark-vesta = "0.4"
 criterion = { version = "0.8.2", features = ["html_reports"] }
+hash-to-curve = { workspace = true }
+commit = { workspace = true, features = ["ipa"] }
 
 [features]
 ipa = ["commit/ipa", "dep:hash-to-curve"]
 simple = ["dep:ark-vesta", "ipa"]
+
+[lib]
+bench = false
 
 [[bench]]
 name = "runtime"

@@ -20,3 +20,6 @@ ark-vesta = "0.4"
 
 [features]
 ipa = ["dep:ark-ec", "dep:hash-to-curve"]
+
+[lib]
+bench = false
