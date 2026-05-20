@@ -26,9 +26,13 @@ criterion = { version = "0.8.2", features = ["html_reports"] }
 ipa = ["commit/ipa", "dep:hash-to-curve"]
 simple = ["dep:ark-vesta", "ipa"]
 
+[lib]
+bench = false
+
 [[bench]]
 name = "runtime"
 harness = false
+required-features = ["simple"]
 
 [[example]]
 name = "example1"

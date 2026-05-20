@@ -15,6 +15,10 @@ type Scheme = commit::ipa::IpaCommitmentScheme<Fr, Projective, SvdwMap<VestaConf
 type Permutation = sponge::poseidon2::PoseidonDefault<Fr>;
 type Sponge = sponge::sponge::Sponge<Fr, Permutation, 1, 2, 3>;
 
+fn quick_mode() -> bool {
+    std::env::args().any(|a| a == "--quick")
+}
+
 fn size<const N: usize>() -> u32 {
     let profile = <HashChain<N> as BuildStructure<Fr, 1, 1, 1, 5>>::profile();
     let witness_size = profile.witness_length.next_power_of_two().ilog2();
@@ -48,11 +52,14 @@ fn proving(c: &mut Criterion) {
     let mut group = c.benchmark_group("Proving Time");
     group.sampling_mode(SamplingMode::Flat);
     let mut rng = StdRng::seed_from_u64(0);
+
     prove::<11>(&mut group, &mut rng);
-    prove::<22>(&mut group, &mut rng);
-    prove::<44>(&mut group, &mut rng);
-    prove::<89>(&mut group, &mut rng);
-    prove::<178>(&mut group, &mut rng);
+    if !quick_mode() {
+        prove::<22>(&mut group, &mut rng);
+        prove::<44>(&mut group, &mut rng);
+        prove::<89>(&mut group, &mut rng);
+        prove::<178>(&mut group, &mut rng);
+    }
 }
 
 fn prove<const N: usize>(group: &mut BenchmarkGroup<'_, WallTime>, rng: &mut impl Rng)
@@ -107,16 +114,19 @@ fn folding(c: &mut Criterion) {
     let mut group = c.benchmark_group("Folding Time");
     group.sampling_mode(SamplingMode::Flat);
     let mut rng = StdRng::seed_from_u64(0);
+
     fold::<11>(&mut group, &mut rng);
-    fold::<22>(&mut group, &mut rng);
-    fold::<44>(&mut group, &mut rng);
-    fold::<89>(&mut group, &mut rng);
-    fold::<178>(&mut group, &mut rng);
-    fold::<356>(&mut group, &mut rng);
-    fold::<712>(&mut group, &mut rng);
-    fold::<1424>(&mut group, &mut rng);
-    fold::<2849>(&mut group, &mut rng);
-    fold::<5698>(&mut group, &mut rng);
+    if !quick_mode() {
+        fold::<22>(&mut group, &mut rng);
+        fold::<44>(&mut group, &mut rng);
+        fold::<89>(&mut group, &mut rng);
+        fold::<178>(&mut group, &mut rng);
+        fold::<356>(&mut group, &mut rng);
+        fold::<712>(&mut group, &mut rng);
+        fold::<1424>(&mut group, &mut rng);
+        fold::<2849>(&mut group, &mut rng);
+        fold::<5698>(&mut group, &mut rng);
+    }
 }
 
 fn commit_and_fold<const N: usize>(group: &mut BenchmarkGroup<'_, WallTime>, rng: &mut impl Rng)
@@ -150,16 +160,19 @@ fn commit_folding(c: &mut Criterion) {
     let mut group = c.benchmark_group("Commit and fold");
     group.sampling_mode(SamplingMode::Flat);
     let mut rng = StdRng::seed_from_u64(0);
+
     commit_and_fold::<11>(&mut group, &mut rng);
-    commit_and_fold::<22>(&mut group, &mut rng);
-    commit_and_fold::<44>(&mut group, &mut rng);
-    commit_and_fold::<89>(&mut group, &mut rng);
-    commit_and_fold::<178>(&mut group, &mut rng);
-    commit_and_fold::<356>(&mut group, &mut rng);
-    commit_and_fold::<712>(&mut group, &mut rng);
-    commit_and_fold::<1424>(&mut group, &mut rng);
-    commit_and_fold::<2849>(&mut group, &mut rng);
-    commit_and_fold::<5698>(&mut group, &mut rng);
+    if !quick_mode() {
+        commit_and_fold::<22>(&mut group, &mut rng);
+        commit_and_fold::<44>(&mut group, &mut rng);
+        commit_and_fold::<89>(&mut group, &mut rng);
+        commit_and_fold::<178>(&mut group, &mut rng);
+        commit_and_fold::<356>(&mut group, &mut rng);
+        commit_and_fold::<712>(&mut group, &mut rng);
+        commit_and_fold::<1424>(&mut group, &mut rng);
+        commit_and_fold::<2849>(&mut group, &mut rng);
+        commit_and_fold::<5698>(&mut group, &mut rng);
+    }
 }
 
 fn hash_chain_benchmarks(c: &mut Criterion) {
