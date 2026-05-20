@@ -3,8 +3,8 @@ use ark_vesta::{Fr, Projective, VestaConfig};
 use ccs::circuit::BuildStructure;
 use commit::CommmitmentScheme;
 use criterion::{
-    criterion_group, criterion_main, measurement::WallTime, BenchmarkGroup, BenchmarkId, Criterion,
-    SamplingMode,
+    criterion_group, criterion_main, measurement::WallTime, BatchSize, BenchmarkGroup, BenchmarkId,
+    Criterion, SamplingMode,
 };
 use hash_to_curve::svdw::SvdwMap;
 use lilium::{testing::utils::HashChain, CircuitKey};
@@ -60,6 +60,7 @@ fn proving(c: &mut Criterion) {
         prove::<89>(&mut group, &mut rng);
         prove::<178>(&mut group, &mut rng);
     }
+    group.finish()
 }
 
 fn prove<const N: usize>(group: &mut BenchmarkGroup<'_, WallTime>, rng: &mut impl Rng)
@@ -103,9 +104,11 @@ where
             let instances = (instance.clone(), instance);
             let witnesses = [witness.clone(), witness];
 
-            b.iter(|| {
-                let _folded = key.fold(instances.clone(), witnesses.clone());
-            });
+            b.iter_batched(
+                || (instances.clone(), witnesses.clone()),
+                |(instances, witnesses)| key.fold(instances, witnesses),
+                BatchSize::SmallInput,
+            );
         },
     );
 }
@@ -127,6 +130,7 @@ fn folding(c: &mut Criterion) {
         fold::<2849>(&mut group, &mut rng);
         fold::<5698>(&mut group, &mut rng);
     }
+    group.finish()
 }
 
 fn commit_and_fold<const N: usize>(group: &mut BenchmarkGroup<'_, WallTime>, rng: &mut impl Rng)
@@ -150,7 +154,7 @@ where
                 let (instance2, witness2, _) = key.commit_witness([preimage]);
                 let instances = (instance1.clone(), instance2);
                 let witnesses = [witness1.clone(), witness2];
-                let _folded = key.fold(instances.clone(), witnesses.clone());
+                let _folded = key.fold(instances, witnesses);
             });
         },
     );
@@ -173,6 +177,7 @@ fn commit_folding(c: &mut Criterion) {
         commit_and_fold::<2849>(&mut group, &mut rng);
         commit_and_fold::<5698>(&mut group, &mut rng);
     }
+    group.finish()
 }
 
 fn hash_chain_benchmarks(c: &mut Criterion) {
