@@ -129,13 +129,10 @@ pub struct CompositeOracle<F, SF, P1, P2>
 where
     F: Field,
     SF: SumcheckFunction<F>,
-    //P1: PartialOracle<F, SF>,
-    //P2: PartialOracle<F, SF>,
 {
     f: SF,
     mles: Rc<Vec<SF::Mles<F>>>,
     vars: usize,
-    _p: PhantomData<(P1, P2)>,
     partial_oracle1: P1,
     partial_oracle2: P2,
 }
