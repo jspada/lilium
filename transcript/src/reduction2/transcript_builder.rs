@@ -12,10 +12,10 @@ pub(crate) struct Round {
 }
 
 impl Round {
-    fn new<F, M: Message<F>>(params: M::Params, challenges: usize) -> Self {
+    fn new<F, M: Message<F>>(params: &M::Params, challenges: usize) -> Self {
         let name = type_name::<M>();
         let id = TypeId::of::<M>();
-        let message_len = M::len(&params);
+        let message_len = M::len(params);
 
         Self {
             name,
@@ -42,7 +42,7 @@ impl TranscriptBuilder {
 
     /// Add a round where the prover sends message M to the verifier, and the verifier
     /// responds with N challenges.
-    pub fn round<F: Field, M: Message<F>, const N: usize>(self, params: M::Params) -> Self {
+    pub fn round<F: Field, M: Message<F>, const N: usize>(self, params: &M::Params) -> Self {
         let Self { mut rounds, sponge } = self;
 
         let round = Round::new::<F, M>(params, N);
@@ -59,7 +59,7 @@ impl TranscriptBuilder {
     /// Add a round where the verifier send a challenge point of given number of variables.
     pub fn point<F: Field>(self, vars: usize) -> Self {
         let Self { mut rounds, sponge } = self;
-        let round = Round::new::<F, PointRound>((), vars);
+        let round = Round::new::<F, PointRound>(&(), vars);
 
         let sponge = sponge.squeeze(round.challenges as u32);
         rounds.push(round);
@@ -104,7 +104,7 @@ impl<F: Field, S: Duplex<F>> TranscriptDescriptor<F, S> {
     /// Creates a descriptor for the given reduction.
     pub(crate) fn for_reduction<R1, R2, R>(
         key: &R::VerifierKey,
-        instance_params: <R1::Instance as Message<F>>::Params,
+        instance_params: &<R1::Instance as Message<F>>::Params,
     ) -> Self
     where
         R1: Relation,

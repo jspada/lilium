@@ -32,10 +32,9 @@ impl<F: Field, C: CommitmentSchemeCore<F>> Message<F> for OpenInstance<F, C> {
         C::Commitment::len(&()) + MultiPoint::<F>::len(params) + 1
     }
 
-    fn to_field_elements(&self, expected_len: usize) -> Result<Vec<F>, Self::Error> {
-        let Ok(mut elems) = self.commit.to_field_elements(expected_len);
-        let elems_len = elems.len();
-        elems.extend(self.point.to_field_elements(expected_len - elems_len - 1)?);
+    fn to_field_elements(&self, params: &usize) -> Result<Vec<F>, Self::Error> {
+        let Ok(mut elems) = self.commit.to_field_elements(&());
+        elems.extend(self.point.to_field_elements(params)?);
         elems.push(self.eval);
         Ok(elems)
     }

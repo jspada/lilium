@@ -17,6 +17,7 @@ where
     R: Reduction<F, R1, R2>,
 {
     key: R::VerifierKey,
+    params: <R1::Instance as Message<F>>::Params,
     transcript_descriptor: TranscriptDescriptor<F, S>,
 }
 
@@ -47,10 +48,11 @@ where
 
         let params = R::instance_params(&key);
 
-        let transcript_descriptor = TranscriptDescriptor::for_reduction::<R1, R2, R>(&key, params);
+        let transcript_descriptor = TranscriptDescriptor::for_reduction::<R1, R2, R>(&key, &params);
 
         Verifier {
             key,
+            params,
             transcript_descriptor,
         }
     }
@@ -66,7 +68,7 @@ where
 
         let instance = transcript.wrap(instance);
         let (instance, []) = transcript
-            .unwrap_guard(instance)
+            .unwrap_guard(instance, &self.params)
             .map_err(VerificationError::InvalidInstance)?;
         let proof = GuardedProof::new(proof);
 

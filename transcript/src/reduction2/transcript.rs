@@ -71,7 +71,7 @@ impl<F: Field, S: Duplex<F>> Transcript<F, S> {
     }
 
     /// Send message M to verifier and get back N challenges.
-    pub fn send_message<M, const N: usize>(&mut self, message: &M) -> [F; N]
+    pub fn send_message<M, const N: usize>(&mut self, message: &M, params: &M::Params) -> [F; N]
     where
         M: Any + Message<F>,
     {
@@ -84,7 +84,7 @@ impl<F: Field, S: Duplex<F>> Transcript<F, S> {
             }
         };
 
-        let elems = match message.to_field_elements(round.message_len) {
+        let elems = match message.to_field_elements(params) {
             Ok(elems) => elems,
             Err(err) => {
                 panic!("Call to to_field_elements() returned error: \n {:?}", err);
@@ -156,13 +156,14 @@ where
         &mut self,
         query: Q,
         proof: &GuardedProof<P>,
+        params: &M::Params,
     ) -> Result<(M, [F; N]), M::Error>
     where
         M: Message<F>,
         Q: Fn(&P) -> M,
     {
         let message: M = query(proof.inner());
-        self.unwrap_guard(Guard::new(message))
+        self.unwrap_guard(Guard::new(message), params)
     }
 
     /// Like [Self::receive_message], but when you already have the message
@@ -170,6 +171,7 @@ where
     pub fn unwrap_guard<M: Message<F>, const N: usize>(
         &mut self,
         message: Guard<M>,
+        params: &M::Params,
     ) -> Result<(M, [F; N]), M::Error> {
         let message = message.inner;
 
@@ -182,7 +184,7 @@ where
             }
         };
 
-        let elems = message.to_field_elements(round.message_len)?;
+        let elems = message.to_field_elements(params)?;
 
         assert_eq!(
             id,

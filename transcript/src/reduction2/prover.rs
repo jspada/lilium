@@ -15,6 +15,7 @@ where
     R: Reduction<F, R1, R2>,
 {
     key: R::ProverKey,
+    params: <R1::Instance as Message<F>>::Params,
     transcript_descriptor: TranscriptDescriptor<F, S>,
 }
 
@@ -34,10 +35,11 @@ where
         let params = R::instance_params(&verifier_key);
 
         let transcript_descriptor =
-            TranscriptDescriptor::for_reduction::<R1, R2, R>(&verifier_key, params);
+            TranscriptDescriptor::for_reduction::<R1, R2, R>(&verifier_key, &params);
 
         Self {
             key,
+            params,
             transcript_descriptor,
         }
     }
@@ -49,6 +51,7 @@ where
         witness: R1::Witness,
     ) -> ProverOutput<R2, R::Proof> {
         let mut transcript = self.transcript_descriptor.instanciate();
+        let [] = transcript.send_message(&instance, &self.params);
         let out = R::prove(&self.key, instance, witness, &mut transcript);
         transcript.finish();
         out

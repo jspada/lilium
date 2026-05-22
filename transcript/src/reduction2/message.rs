@@ -20,17 +20,7 @@ pub trait Message<F>: Any + Clone + Debug {
     /// Ideally, the type will be designed such that all possible values
     /// are valid. But that isn't always possible, and for such cases,
     /// errors should be used.
-    /// Avoid using the expected_len to "fix" the length of message, use
-    /// it only to check the result if the type is not enough and output
-    /// an error.
-    fn to_field_elements(&self, expected_len: usize) -> Result<Vec<F>, Self::Error>;
-}
-
-/// For messages where the params can be derived from the value.
-/// That's not to say that the length is necesarily constant, this
-/// is just to provide other types a hint when composing this message.
-pub trait InherentParams<F>: Message<F> {
-    fn params(&self) -> Self::Params;
+    fn to_field_elements(&self, params: &Self::Params) -> Result<Vec<F>, Self::Error>;
 }
 
 /// Used internally to handle generating challenge points.
@@ -46,7 +36,7 @@ impl<F> Message<F> for PointRound {
         0
     }
 
-    fn to_field_elements(&self, _params: usize) -> Result<Vec<F>, Self::Error> {
+    fn to_field_elements(&self, _params: &()) -> Result<Vec<F>, Self::Error> {
         Ok(vec![])
     }
 }
@@ -60,8 +50,7 @@ impl<F> Message<F> for () {
         0
     }
 
-    fn to_field_elements(&self, expected_len: usize) -> Result<Vec<F>, Self::Error> {
-        assert_eq!(expected_len, 0);
+    fn to_field_elements(&self, _params: &()) -> Result<Vec<F>, Self::Error> {
         Ok(vec![])
     }
 }

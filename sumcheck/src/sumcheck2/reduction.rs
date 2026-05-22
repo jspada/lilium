@@ -35,8 +35,8 @@ impl<F: Field> Message<F> for SumcheckMessage<F> {
         *params + 1
     }
 
-    fn to_field_elements(&self, expected_len: usize) -> Result<Vec<F>, Self::Error> {
-        if self.0.len() == expected_len {
+    fn to_field_elements(&self, params: &Self::Params) -> Result<Vec<F>, Self::Error> {
+        if self.0.len() == *params {
             Ok(self.0.clone())
         } else {
             Err(UnexpectedDegree)
@@ -80,7 +80,7 @@ impl<F: Field, O: Oracle<F>> Reduction<F, SumcheckRelation<F, O>, QueryRelation<
         key: &Self::VerifierKey,
         builder: TranscriptBuilder,
     ) -> TranscriptBuilder {
-        let degree = key.degree;
+        let degree = &key.degree;
         (0..key.vars).fold(builder, |builder, _| {
             builder.round::<F, SumcheckMessage<F>, 1>(degree)
         })
@@ -134,7 +134,7 @@ impl<F: Field, O: Oracle<F>> Reduction<F, SumcheckRelation<F, O>, QueryRelation<
         let mut vars = vec![];
         for i in 0..key.vars {
             let (message, [r]) = transcript
-                .receive_message(|proof| proof[i].clone(), &proof)
+                .receive_message(|proof| proof[i].clone(), &proof, &key.degree)
                 .map_err(SumcheckError::Degree)?;
 
             let message = message.to_message();

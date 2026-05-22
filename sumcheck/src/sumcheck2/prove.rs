@@ -96,7 +96,7 @@ impl<F: Field, O: Oracle<F>> ProverKey<F, O> {
 
         for _ in 0..self.vars {
             let message = self.message(&witness);
-            let [r] = transcript.send_message(&message);
+            let [r] = transcript.send_message(&message, &self.degree);
 
             self.bind_variable(&mut witness, r);
             vars.push(r);

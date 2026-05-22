@@ -31,8 +31,8 @@ impl<F: Field> Message<F> for MultiPoint<F> {
         *params
     }
 
-    fn to_field_elements(&self, expected_len: usize) -> Result<Vec<F>, Self::Error> {
-        if self.vars() == expected_len {
+    fn to_field_elements(&self, params: &usize) -> Result<Vec<F>, Self::Error> {
+        if self.vars() == *params {
             Ok(self.clone().inner())
         } else {
             Err(UnexpectedVars)
@@ -59,19 +59,16 @@ where
         O::len(&params.0) + MultiPoint::<F>::len(&params.1) + 1
     }
 
-    fn to_field_elements(&self, expected_len: usize) -> Result<Vec<F>, Self::Error> {
-        // Here we have to either assume the oracle instance or the point to be
-        // correct.
-        // It is a limitation of how the Message trait works with compound types.
-        // In this case the point is assume to be correct, but both oracle and
-        // point could be wrong in a way that adds up to the correct length.
-        // It isn't a soundness bug, but I can make debugging harder.
-        let expected = expected_len - self.point.vars() - 1;
+    fn to_field_elements(&self, params: &Self::Params) -> Result<Vec<F>, Self::Error> {
         let mut elems = self
             .oracle_instance
-            .to_field_elements(expected)
+            .to_field_elements(&params.0)
             .map_err(QueryInstanceError::Oracle)?;
-        elems.extend(self.point.clone().inner());
+        let point = match self.point.to_field_elements(&params.1) {
+            Ok(point) => point,
+            Err(err) => return Err(QueryInstanceError::Point(err)),
+        };
+        elems.extend(point);
         elems.push(self.eval);
         Ok(elems)
     }

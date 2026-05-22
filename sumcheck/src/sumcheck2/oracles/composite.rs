@@ -10,8 +10,8 @@ use core::panic;
 use sponge::sponge::Duplex;
 use std::{fmt::Debug, marker::PhantomData, rc::Rc};
 use transcript::reduction2::{
-    GuardedProof, InherentParams, Message, ProverOutput, Reduction, Relation, Transcript,
-    TranscriptBuilder, VerifierTranscript,
+    GuardedProof, Message, ProverOutput, Reduction, Relation, Transcript, TranscriptBuilder,
+    VerifierTranscript,
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -66,7 +66,7 @@ where
     SF: SumcheckFunction<F>,
     <Self::Instance as Message<F>>::Error: Clone,
 {
-    type Instance: Message<F, Params = OracleParams> + InherentParams<F> + Clone;
+    type Instance: Message<F, Params = OracleParams> + Clone;
     // type Witness;
     type VerifierKey: From<Self> + Clone;
 
@@ -173,27 +173,21 @@ where
         P1::Instance::len(params) + P2::Instance::len(params)
     }
 
-    fn to_field_elements(&self, expected_len: usize) -> Result<Vec<F>, Self::Error> {
+    fn to_field_elements(&self, params: &OracleParams) -> Result<Vec<F>, Self::Error> {
         use CompositeError::*;
-        let oracle1_len = P1::Instance::len(&self.oracle1_instance.params());
-        let oracle2_len = P2::Instance::len(&self.oracle2_instance.params());
 
         let mut elems = self
             .oracle1_instance
-            .to_field_elements(oracle1_len)
+            .to_field_elements(params)
             .map_err(Oracle1)?;
 
         elems.extend(
             self.oracle2_instance
-                .to_field_elements(expected_len)
+                .to_field_elements(params)
                 .map_err(Oracle2)?,
         );
 
-        if expected_len != oracle1_len + oracle2_len {
-            Err(UnexpectedLenght)
-        } else {
-            Ok(elems)
-        }
+        Ok(elems)
     }
 }
 
@@ -331,7 +325,8 @@ impl<F: Field> Message<F> for ProverEvals<F> {
         *params
     }
 
-    fn to_field_elements(&self, expected_len: usize) -> Result<Vec<F>, Self::Error> {
+    fn to_field_elements(&self, params: &usize) -> Result<Vec<F>, Self::Error> {
+        let expected_len = *params;
         if self.0.len() == expected_len {
             Ok(self.0.clone())
         } else {
@@ -361,7 +356,7 @@ where
         key: &Self::VerifierKey,
         builder: TranscriptBuilder,
     ) -> TranscriptBuilder {
-        builder.round::<F, ProverEvals<F>, 0>(key.oracle1_evals + key.oracle2_evals)
+        builder.round::<F, ProverEvals<F>, 0>(&(key.oracle1_evals + key.oracle2_evals))
     }
 
     fn verifier_key(oracle: &Self, _: &(P1, P2)) -> Self::VerifierKey {
@@ -455,7 +450,7 @@ where
 
         let mut prover_evals = ProverEvals(evals1);
         prover_evals.0.extend(evals2);
-        let [] = transcript.send_message(&prover_evals);
+        let [] = transcript.send_message(&prover_evals, &(key.oracle1_evals + key.oracle2_evals));
 
         let proof = prover_evals;
 
@@ -478,7 +473,8 @@ where
             eval: expected_eval,
         } = instance;
 
-        let (prover_evals, []) = transcript.receive_message(|proof| proof.clone(), &proof)?;
+        let params = key.oracle1_evals + key.oracle2_evals;
+        let (prover_evals, []) = transcript.receive_message(Clone::clone, &proof, &params)?;
         let ProverEvals(prover_evals) = prover_evals;
 
         assert_eq!(prover_evals.len(), key.oracle1_evals + key.oracle2_evals);

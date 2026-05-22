@@ -52,8 +52,8 @@ impl<F: Field, O: Oracle<F>> Message<F> for SumcheckInstance<F, O> {
         1 + O::Instance::len(params)
     }
 
-    fn to_field_elements(&self, expected_len: usize) -> Result<Vec<F>, Self::Error> {
-        let mut elems = self.oracle_instance.to_field_elements(expected_len - 1)?;
+    fn to_field_elements(&self, params: &Self::Params) -> Result<Vec<F>, Self::Error> {
+        let mut elems = self.oracle_instance.to_field_elements(params)?;
         elems.insert(0, self.sum);
         Ok(elems)
     }

@@ -22,7 +22,7 @@ pub enum Error {
     UnexpectedFinish,
 }
 
-pub use message::{InherentParams, Message};
+pub use message::Message;
 pub use proof::GuardedProof;
 pub use prover::Prover;
 pub use reduction::{Argument, ProverOutput, Reduction};
