@@ -6,7 +6,7 @@ use std::{fmt::Debug, marker::PhantomData};
 /// of multilinear polynomials.
 pub trait SumcheckFunction<F: Field>: Debug + Clone + 'static {
     type Mles<V>: Evals<V> + Debug + Default;
-    type Natures;
+    type Natures: Copy + Debug;
 
     fn natures() -> Self::Mles<Self::Natures>;
 

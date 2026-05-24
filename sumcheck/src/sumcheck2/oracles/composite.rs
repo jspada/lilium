@@ -38,16 +38,18 @@ pub struct OracleParams {
     pub vars: usize,
 }
 
-pub struct PartialQueryInstance<F, O> {
+pub struct PartialQueryInstance<F: Field, O> {
     evals: Vec<F>,
     oracle_instance: O,
+    point: MultiPoint<F>,
 }
 
-impl<F, O> PartialQueryInstance<F, O> {
-    pub fn new(evals: Vec<F>, oracle_instance: O) -> Self {
+impl<F: Field, O> PartialQueryInstance<F, O> {
+    pub fn new(evals: Vec<F>, oracle_instance: O, point: &MultiPoint<F>) -> Self {
         Self {
             evals,
             oracle_instance,
+            point: point.clone(),
         }
     }
 
@@ -58,6 +60,10 @@ impl<F, O> PartialQueryInstance<F, O> {
     pub fn oracle_instance(&self) -> &O {
         &self.oracle_instance
     }
+
+    pub fn point(&self) -> &MultiPoint<F> {
+        &self.point
+    }
 }
 
 pub trait PartialOracle<F, SF>: 'static + Clone + Debug
@@ -67,7 +73,6 @@ where
     <Self::Instance as Message<F>>::Error: Clone,
 {
     type Instance: Message<F, Params = OracleParams> + Clone;
-    // type Witness;
     type VerifierKey: From<Self> + Clone;
 
     type Nature: Into<EvalLocation> + Copy + Debug;
@@ -79,7 +84,6 @@ where
     >;
 
     fn instance_evals(instance: &Self::Instance) -> SF::Mles<F>;
-    fn oracle_params(&self) -> <Self::Instance as Message<F>>::Params;
     fn evals(
         key: &Self::VerifierKey,
         instance: &Self::Instance,
@@ -444,8 +448,10 @@ where
 
         assert_eq!(evals2.len(), key.oracle2_evals);
 
-        let instance1 = PartialQueryInstance::new(evals1.clone(), oracle_instance.oracle1_instance);
-        let instance2 = PartialQueryInstance::new(evals2.clone(), oracle_instance.oracle2_instance);
+        let instance1 =
+            PartialQueryInstance::new(evals1.clone(), oracle_instance.oracle1_instance, &point);
+        let instance2 =
+            PartialQueryInstance::new(evals2.clone(), oracle_instance.oracle2_instance, &point);
         let instance = (instance1, instance2);
 
         let mut prover_evals = ProverEvals(evals1);
@@ -527,8 +533,10 @@ where
         let eval = key.f.function(&evals);
 
         if eval == expected_eval {
-            let instance1 = PartialQueryInstance::new(instance1, oracle_instance.oracle1_instance);
-            let instance2 = PartialQueryInstance::new(instance2, oracle_instance.oracle2_instance);
+            let instance1 =
+                PartialQueryInstance::new(instance1, oracle_instance.oracle1_instance, &point);
+            let instance2 =
+                PartialQueryInstance::new(instance2, oracle_instance.oracle2_instance, &point);
             Ok((instance1, instance2))
         } else {
             todo!()

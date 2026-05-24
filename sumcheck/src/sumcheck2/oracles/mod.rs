@@ -4,6 +4,7 @@ use std::{fmt::Debug, marker::PhantomData, rc::Rc};
 use transcript::reduction2::{Message, Relation};
 
 pub mod composite;
+pub mod core;
 mod function;
 pub mod small;
 
