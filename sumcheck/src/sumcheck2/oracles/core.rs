@@ -6,8 +6,12 @@ use crate::{
     },
 };
 use ark_ff::Field;
+use sponge::sponge::Duplex;
 use std::marker::PhantomData;
-use transcript::reduction2::{Message, Relation};
+use transcript::reduction2::{
+    Argument, GuardedProof, Message, ProverOutput, Reduction, Relation, Transcript,
+    TranscriptBuilder, VerifierTranscript,
+};
 
 /// The number of coefficients used to represent the small polynomial.
 #[derive(Clone, Copy, Debug)]
@@ -274,4 +278,86 @@ where
         let evals: Vec<F> = evals.flatten_vec().into_iter().flatten().collect();
         evals == expected_evals
     }
+}
+
+impl<F, SF> Reduction<F, CoreQueryRelation<F, SF>, ()> for CoreOracle<F, SF>
+where
+    F: Field,
+    SF: SumcheckFunction<F>,
+    Option<CoreNature>: From<SF::Natures>,
+{
+    type ProverKey = Self;
+
+    type VerifierKey = Self;
+
+    type Proof = ();
+
+    type Error = ();
+
+    fn transcript_pattern(
+        _key: &Self::VerifierKey,
+        builder: TranscriptBuilder,
+    ) -> TranscriptBuilder {
+        // It is a non-interactive protocol
+        builder
+    }
+
+    fn verifier_key(oracle: &Self, _: &()) -> Self::VerifierKey {
+        oracle.clone()
+    }
+
+    fn instance_params(
+        _key: &Self::VerifierKey,
+    ) -> <<CoreQueryRelation<F, SF> as Relation>::Instance as Message<F>>::Params
+    where
+        <CoreQueryRelation<F, SF> as Relation>::Instance: Message<F>,
+    {
+        // This method is only called when using the reduction at the top level
+        // to crate a prover or verifier. Something which shouldn't be possible
+        // as the instance doesn't implement message.
+        unreachable!()
+    }
+
+    fn key_pair(oracle: &Self, _: &()) -> (Self::VerifierKey, Self::ProverKey) {
+        (oracle.clone(), oracle.clone())
+    }
+
+    fn prove<S: Duplex<F>>(
+        key: &Self::ProverKey,
+        instance: PartialQueryInstance<F, CoreOracleInstance<F, SF>>,
+        witness: Vec<SF::Mles<F>>,
+        _transcript: &mut Transcript<F, S>,
+    ) -> ProverOutput<(), Self::Proof> {
+        assert!(CoreQueryRelation::check(key, &instance, &witness));
+        ProverOutput {
+            instance: (),
+            witness: (),
+            proof: (),
+        }
+    }
+
+    fn verify<S: Duplex<F>>(
+        key: &Self::VerifierKey,
+        instance: PartialQueryInstance<F, CoreOracleInstance<F, SF>>,
+        _proof: GuardedProof<Self::Proof>,
+        _transcript: &mut VerifierTranscript<F, S>,
+    ) -> Result<(), Self::Error> {
+        // TODO: It would be better to implement it here with better errors
+        // instead of relying on check().
+        // As check doesn't make use of it.
+        let witness = vec![];
+        if CoreQueryRelation::check(key, &instance, &witness) {
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
+}
+
+impl<F, SF> Argument<F, CoreQueryRelation<F, SF>> for CoreOracle<F, SF>
+where
+    F: Field,
+    SF: SumcheckFunction<F>,
+    Option<CoreNature>: From<SF::Natures>,
+{
 }
