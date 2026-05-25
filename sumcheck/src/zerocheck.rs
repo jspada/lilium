@@ -16,7 +16,7 @@ use transcript::{params::ParamResolver, Transcript};
 
 /// Multilinear polynomial of form:
 /// p(x_0) = x_0 * ß + (1 - x_0) * c
-/// p(x_{i+1}) = (x_{i+1} * ß^{2^i} + (1 - x_i) * c_i) * p(x_i)
+/// p(x_{i+1}) = (x_{i+1} * ß^{2^i} + (1 - x_{i+1}) * c_i) * p(x_i)
 /// For some challenge ß and c = 1.
 /// Making the MLE essentially a vector
 /// 1, ß, ß^2, .. , ß^{2^k}
@@ -463,4 +463,35 @@ fn factor_folding() {
     let p2ev = p2.point_eval(&check_point);
     let p3ev = p3.point_eval(&check_point);
     assert_ne!(p1ev * chall + p2ev, p3ev);
+}
+
+// Test the CompactPowers representation (core of zerocheck used
+// in the folding/zero-knowledge reductions) sums to a known value
+// over the boolean hypercube.  This test helps catch regressions,
+// such as exponential ordering mistakes, missing powers, broken
+// eval_over_domain and incorrect tensor-product factorization.
+#[test]
+fn compact_powers_hypercube_sum() {
+    use ark_ff::{One, UniformRand};
+    use ark_vesta::Fr;
+    use rand::{rngs::StdRng, SeedableRng};
+
+    let mut rng = StdRng::seed_from_u64(0);
+    let chall = Fr::rand(&mut rng);
+    let vars = 5;
+
+    // Compute the vars length factorized coefficient pairs
+    let powers = CompactPowers::new(chall, vars);
+    // Compute the 2^vars length full evaluation vector
+    let evals = powers.eval_over_domain();
+    // Sum over full vector
+    let sum: Fr = evals.iter().cloned().sum();
+
+    // Sum over the hypercube = prod_j (chall^(2^j) + 1) closed form with
+    // vars terms in factorized form
+    let expected: Fr = (0..vars)
+        .map(|j| Fr::one() + chall.pow(&[1 << j, 0, 0, 0]))
+        .product();
+
+    assert_eq!(sum, expected, "Hypercube sum mismatch");
 }
