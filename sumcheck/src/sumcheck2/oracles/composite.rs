@@ -38,6 +38,7 @@ pub struct OracleParams {
     pub vars: usize,
 }
 
+#[derive(Clone, Debug)]
 pub struct PartialQueryInstance<F: Field, O> {
     evals: Vec<F>,
     oracle_instance: O,
@@ -63,6 +64,47 @@ impl<F: Field, O> PartialQueryInstance<F, O> {
 
     pub fn point(&self) -> &MultiPoint<F> {
         &self.point
+    }
+}
+
+impl<F, SF, P1, P2> PartialQueryInstance<F, CompositeOracleInstance<F, SF, P1, P2>>
+where
+    F: Field,
+    SF: SumcheckFunction<F>,
+    P1: PartialOracle<F, SF>,
+    P2: PartialOracle<F, SF>,
+{
+    fn split(
+        self,
+        evals1: usize,
+        evals2: usize,
+    ) -> (
+        PartialQueryInstance<F, P1::Instance>,
+        PartialQueryInstance<F, P2::Instance>,
+    ) {
+        let Self {
+            evals,
+            oracle_instance,
+            point,
+        } = self;
+        assert_eq!(evals.len(), evals1 + evals2);
+        let (evals1, evals2) = evals.split_at(evals1);
+        let CompositeOracleInstance {
+            oracle1_instance,
+            oracle2_instance,
+        } = oracle_instance;
+
+        let instance1 = PartialQueryInstance {
+            evals: evals1.to_vec(),
+            oracle_instance: oracle1_instance,
+            point: point.clone(),
+        };
+        let instance2 = PartialQueryInstance {
+            evals: evals2.to_vec(),
+            oracle_instance: oracle2_instance,
+            point,
+        };
+        (instance1, instance2)
     }
 }
 
@@ -99,7 +141,7 @@ pub enum OracleEval<F> {
     None,
 }
 
-pub struct PartialQueryRelation<F, SF, P1, P2>(PhantomData<(F, SF, P1, P2)>);
+struct PartialQueryRelation<F, SF, P1, P2>(PhantomData<(F, SF, P1, P2)>);
 
 impl<F, SF, P1, P2> Relation for PartialQueryRelation<F, SF, P1, P2>
 where
@@ -137,11 +179,10 @@ where
     f: SF,
     mles: Rc<Vec<SF::Mles<F>>>,
     vars: usize,
+    evals_per_oracle: (usize, usize),
     partial_oracle1: P1,
     partial_oracle2: P2,
 }
-
-pub struct CompositeQueryRelation<F, SF, P1, P2>(PhantomData<(F, SF, P1, P2)>);
 
 #[derive(Clone, Copy, Debug)]
 pub struct CompositeOracleInstance<F, SF, P1, P2>
@@ -255,7 +296,7 @@ where
         witness: &Self::Witness,
     ) -> Self::Evals<F> {
         let natures = SF::natures();
-        let instance_evals = Self::instance_evals(instance);
+        let instance_evals = <Self as Oracle<F>>::instance_evals(instance);
         // TODO: Evaluate only what's needed of each.
         let witness_evals = EvalsExt::eval(witness, point.clone());
         let structure_evals = EvalsExt::eval(&self.mles, point.clone());
@@ -539,7 +580,123 @@ where
                 PartialQueryInstance::new(instance2, oracle_instance.oracle2_instance, &point);
             Ok((instance1, instance2))
         } else {
-            todo!()
+            Err(())
+        }
+    }
+}
+
+pub struct CompositeQueryRelation<F, SF, P1, P2>(PhantomData<(F, SF, P1, P2)>);
+
+impl<F, SF, P1, P2> Relation for CompositeQueryRelation<F, SF, P1, P2>
+where
+    F: Field,
+    SF: SumcheckFunction<F>,
+    P1: PartialOracle<F, SF>,
+    P2: PartialOracle<F, SF>,
+{
+    type Structure = CompositeOracle<F, SF, P1, P2>;
+
+    type Instance = PartialQueryInstance<F, CompositeOracleInstance<F, SF, P1, P2>>;
+
+    type Witness = Vec<SF::Mles<F>>;
+
+    fn check(
+        structure: &Self::Structure,
+        instance: &Self::Instance,
+        witness: &Self::Witness,
+    ) -> bool {
+        let (evals1, evals2) = structure.evals_per_oracle;
+        let (instance1, instance2) = instance.clone().split(evals1, evals2);
+
+        let check1 = P1::QueryRelation::check(&structure.partial_oracle1, &instance1, witness);
+        let check2 = P2::QueryRelation::check(&structure.partial_oracle2, &instance2, witness);
+
+        check1 && check2
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct CompositeOracleKey<F, SF, P1, P2>
+where
+    F: Field,
+    SF: SumcheckFunction<F>,
+    P1: PartialOracle<F, SF>,
+    P2: PartialOracle<F, SF>,
+{
+    oracle1_key: P1::VerifierKey,
+    oracle2_key: P2::VerifierKey,
+}
+
+impl<F, SF, P1, P2> From<CompositeOracle<F, SF, P1, P2>> for CompositeOracleKey<F, SF, P1, P2>
+where
+    F: Field,
+    SF: SumcheckFunction<F>,
+    P1: PartialOracle<F, SF>,
+    P2: PartialOracle<F, SF>,
+{
+    fn from(value: CompositeOracle<F, SF, P1, P2>) -> Self {
+        let CompositeOracle {
+            partial_oracle1,
+            partial_oracle2,
+            ..
+        } = value;
+        let oracle1_key = P1::VerifierKey::from(partial_oracle1);
+        let oracle2_key = P2::VerifierKey::from(partial_oracle2);
+        Self {
+            oracle1_key,
+            oracle2_key,
+        }
+    }
+}
+
+impl<F, SF, P1, P2> PartialOracle<F, SF> for CompositeOracle<F, SF, P1, P2>
+where
+    F: Field,
+    SF: SumcheckFunction<F>,
+    P1: PartialOracle<F, SF>,
+    P2: PartialOracle<F, SF>,
+    Option<Either<P1::Nature, P2::Nature>>: From<SF::Natures>,
+{
+    type Instance = CompositeOracleInstance<F, SF, P1, P2>;
+
+    type VerifierKey = CompositeOracleKey<F, SF, P1, P2>;
+
+    type Nature = Either<P1::Nature, P2::Nature>;
+
+    type QueryRelation = CompositeQueryRelation<F, SF, P1, P2>;
+
+    fn instance_evals(instance: &Self::Instance) -> <SF as SumcheckFunction<F>>::Mles<F> {
+        let evals1 = P1::instance_evals(&instance.oracle1_instance);
+        let evals2 = P2::instance_evals(&instance.oracle2_instance);
+        evals1.combine(&evals2, |e1, e2| e1 + e2)
+    }
+
+    fn evals(
+        key: &Self::VerifierKey,
+        instance: &Self::Instance,
+        point: &MultiPoint<F>,
+    ) -> <SF as SumcheckFunction<F>>::Mles<OracleEval<F>> {
+        use OracleEval::*;
+        let evals1 = P1::evals(&key.oracle1_key, &instance.oracle1_instance, point);
+        let evals2 = P2::evals(&key.oracle2_key, &instance.oracle2_instance, point);
+        evals1.combine(&evals2, |eval1, eval2| {
+            match (eval1, eval2) {
+                // (Computed(_), Computed(_)) => todo!(),
+                // (Computed(_), ProverProvided) => todo!(),
+                // (ProverProvided, Computed(_)) => todo!(),
+                // (ProverProvided, ProverProvided) => todo!(),
+                (Computed(e), None) | (None, Computed(e)) => Computed(e),
+                (ProverProvided, None) | (None, ProverProvided) => ProverProvided,
+                (None, None) => None,
+                _ => unreachable!(),
+            }
+        })
+    }
+
+    fn prover_provided(nature: &Self::Nature) -> bool {
+        match nature {
+            Either::Left(nature) => P1::prover_provided(nature),
+            Either::Right(nature) => P2::prover_provided(nature),
         }
     }
 }
