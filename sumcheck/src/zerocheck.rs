@@ -490,7 +490,7 @@ fn compact_powers_hypercube_sum() {
     // Sum over the hypercube = prod_j (chall^(2^j) + 1) closed form with
     // vars terms in factorized form
     let expected: Fr = (0..vars)
-        .map(|j| Fr::one() + chall.pow(&[1 << j, 0, 0, 0]))
+        .map(|j| Fr::one() + chall.pow([1 << j, 0, 0, 0]))
         .product();
 
     assert_eq!(sum, expected, "Hypercube sum mismatch");
