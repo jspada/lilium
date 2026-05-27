@@ -12,8 +12,8 @@ pub trait SumcheckFunction<F: Field>: Debug + Clone + 'static {
 
     fn map_evals<A, B, M>(evals: &Self::Mles<A>, f: M) -> Self::Mles<B>
     where
-        A: Copy + Debug,
-        B: Copy + Debug,
+        A: Debug,
+        B: Debug,
         M: Fn(&A) -> B;
 
     fn combine<A, B, C, M>(a: &Self::Mles<A>, b: &Self::Mles<B>, f: M) -> Self::Mles<C>
@@ -69,8 +69,8 @@ where
 
     fn map_evals<A, B, M>(evals: &Self::Mles<A>, f: M) -> Self::Mles<B>
     where
-        A: Copy + Debug,
-        B: Copy + Debug,
+        A: Debug,
+        B: Debug,
         M: Fn(&A) -> B,
     {
         SF::map_evals(evals, f)
@@ -143,8 +143,8 @@ where
 
     fn map_evals<A, B, M>(evals: &Self::Mles<A>, f: M) -> Self::Mles<B>
     where
-        A: Copy + Debug,
-        B: Copy + Debug,
+        A: Debug,
+        B: Debug,
         M: Fn(&A) -> B,
     {
         SF::map_evals(evals, f)
