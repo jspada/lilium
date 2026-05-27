@@ -147,3 +147,88 @@ fn premature_finish_rejected() {
     let result = transcript.finish();
     assert!(matches!(result, Err(Error::SpongeError(_))));
 }
+
+// Multi-round agreement: the sponge state must chain correctly across rounds so
+// that the challenge at round N is influenced by every message absorbed in
+// rounds 1..N. (Above single-round tests do not cover cross-round accumulation)
+#[test]
+fn multi_round_agreement() {
+    let descriptor = TranscriptBuilder::new(VARS, ParamResolver::new())
+        .round::<F, SingleElement<F>, 1>()
+        .round::<F, [SingleElement<F>; 3], 1>()
+        .round::<F, SingleElement<F>, 2>()
+        .finish::<F, TestSponge>();
+    let mut prover = descriptor.instanciate();
+    let mut verifier = descriptor.instanciate();
+
+    let m1 = SingleElement(F::from(10u64));
+    let m2 = [
+        SingleElement(F::from(20u64)),
+        SingleElement(F::from(21u64)),
+        SingleElement(F::from(22u64)),
+    ];
+    let m3 = SingleElement(F::from(30u64));
+
+    let p1: [F; 1] = prover.send_message(&m1).unwrap();
+    let v1: [F; 1] = verifier.send_message(&m1).unwrap();
+    assert_eq!(p1, v1, "Challenges must match at round 1");
+
+    let p2: [F; 1] = prover.send_message(&m2).unwrap();
+    let v2: [F; 1] = verifier.send_message(&m2).unwrap();
+    assert_eq!(p2, v2, "Challenges must match at round 2");
+
+    let p3: [F; 2] = prover.send_message(&m3).unwrap();
+    let v3: [F; 2] = verifier.send_message(&m3).unwrap();
+    assert_eq!(p3, v3, "Challenges must match at round 3");
+
+    prover.finish().unwrap();
+    verifier.finish().unwrap();
+}
+
+// Point agreement: two transcripts with the same absorbed history must derive
+// the same evaluation point from point()
+#[test]
+fn point_agreement() {
+    let descriptor = TranscriptBuilder::new(VARS, ParamResolver::new())
+        .round::<F, SingleElement<F>, 1>()
+        .point()
+        .finish::<F, TestSponge>();
+    let mut prover = descriptor.instanciate();
+    let mut verifier = descriptor.instanciate();
+    let msg = SingleElement(F::from(1000003u64));
+    let _: [F; 1] = prover.send_message(&msg).unwrap();
+    let _: [F; 1] = verifier.send_message(&msg).unwrap();
+    let p_point = prover.point().unwrap();
+    let v_point = verifier.point().unwrap();
+    assert_eq!(
+        p_point, v_point,
+        "Prover and verifier must derive the same evaluation point"
+    );
+    assert_eq!(p_point.len(), VARS, "Point must have VARS elements");
+    prover.finish().unwrap();
+    verifier.finish().unwrap();
+}
+
+// Message order sensitivity: absorbing the same messages in a different order must
+// produce different challenges (confirming the transcript is order-sensitive)
+#[test]
+fn message_order_matters() {
+    let descriptor = TranscriptBuilder::new(VARS, ParamResolver::new())
+        .round::<F, SingleElement<F>, 1>()
+        .round::<F, SingleElement<F>, 1>()
+        .finish::<F, TestSponge>();
+    let mut ab = descriptor.instanciate();
+    let mut ba = descriptor.instanciate();
+    let m1 = SingleElement(F::from(31u64));
+    let m2 = SingleElement(F::from(32u64));
+    let _: [F; 1] = ab.send_message(&m1).unwrap();
+    let c_ab: [F; 1] = ab.send_message(&m2).unwrap();
+    let _: [F; 1] = ba.send_message(&m2).unwrap();
+    let c_ba: [F; 1] = ba.send_message(&m1).unwrap();
+    assert_ne!(
+        c_ab, c_ba,
+        "Swapping message order must produce different challenges"
+    );
+    ab.finish().unwrap();
+    ba.finish().unwrap();
+}
