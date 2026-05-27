@@ -14,6 +14,9 @@ mod transcript;
 mod transcript_builder;
 pub mod utils;
 
+#[cfg(test)]
+mod tests;
+
 pub trait Message<F: Field> {
     fn len(vars: usize, param_resolver: &ParamResolver) -> usize;
     fn to_field_elements(&self) -> Vec<F>;
