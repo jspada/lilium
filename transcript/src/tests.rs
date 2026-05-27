@@ -13,7 +13,7 @@ use crate::{
 };
 
 type F = Fr;
-type TestSponge = Sponge<F, PoseidonDefault<F>, 1, 2, 3>;
+type TestSponge = Sponge<F, PoseidonDefault<F>, 2, 1, 3>;
 const VARS: usize = 2;
 
 fn one_round_protocol() -> TranscriptDescriptor<F, TestSponge> {
