@@ -32,16 +32,16 @@ fn polynomial_commitment<S: CommmitmentScheme<Fr>>(should_fail: bool) {
 
     let params = ParamResolver::new();
     let transcript_builder =
-        TranscriptBuilder::new(LEN_LOG, params).add_protocol_patter::<Fr, S>(&scheme);
+        TranscriptBuilder::new(LEN_LOG, params).add_protocol_pattern::<Fr, S>(&scheme);
     let transcript_desc = transcript_builder.finish::<Fr, TestSponge>();
-    let mut transcript = transcript_desc.instanciate();
+    let mut transcript = transcript_desc.instantiate();
 
     let proof = scheme
         .open_prove(instance.clone(), &mle, &mut transcript)
         .unwrap();
     transcript.finish_unchecked();
 
-    let mut transcript = transcript_desc.instanciate();
+    let mut transcript = transcript_desc.instantiate();
     // let mut transcript = TranscriptGuard::new(transcript, proof);
     if should_fail {
         // to make it fail

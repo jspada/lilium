@@ -41,7 +41,7 @@ pub struct Sponge<F: Field, P: Permutation<F, T>, const R: usize, const C: usize
     disable_check: bool,
 }
 
-/// Initial state to instanciate sponges with
+/// Initial state to instantiate sponges with
 pub struct SpongeInitializer<
     F: Field,
     P: Permutation<F, T>,
@@ -308,7 +308,7 @@ pub trait Duplex<F: Field> {
     /// Initializes a sponge for a given io pattern
     fn from_builder(builder: SpongeBuilder) -> Self::Initializer;
     /// Instanciates a sponge from the initializer
-    fn instanciate(init: &Self::Initializer) -> Self;
+    fn instantiate(init: &Self::Initializer) -> Self;
     fn absorb(&mut self, elem: F) -> Result<(), Error>;
     fn squeeze(&mut self) -> Result<F, Error>;
     fn finish(self) -> Result<(), Error>;
@@ -326,7 +326,7 @@ where
         builder.sponge()
     }
 
-    fn instanciate(init: &Self::Initializer) -> Self {
+    fn instantiate(init: &Self::Initializer) -> Self {
         let pattern = init.pattern.clone();
         //TODO: avoiding this may prove desirable in the future
         let permutation = P::new();
@@ -369,9 +369,9 @@ impl<F: Field> Duplex<F> for UnsafeSponge<F> {
         Sponge::from_builder(builder)
     }
 
-    fn instanciate(init: &Self::Initializer) -> Self {
+    fn instantiate(init: &Self::Initializer) -> Self {
         Self {
-            inner: Sponge::instanciate(init),
+            inner: Sponge::instantiate(init),
         }
     }
 

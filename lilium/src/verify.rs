@@ -15,7 +15,7 @@ where
 {
     //TODO: output result instead.
     pub fn verify(&self, instance: LcsInstance<F, CS, I>, proof: LcsProof<F, CS, IO, S>) -> bool {
-        let mut transcript = self.transcript.instanciate();
+        let mut transcript = self.transcript.instantiate();
         let result = {
             let transcript = TranscriptGuard::new(&mut transcript, proof);
             let instance = MessageGuard::new(instance);

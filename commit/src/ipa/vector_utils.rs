@@ -1,5 +1,5 @@
 use ark_ec::ScalarMul;
-use ark_ff::Field;
+use ark_ff::{BigInteger, Field, PrimeField};
 
 pub fn fold_vec<F: Field>(mut vec: Vec<F>, challs: [F; 2]) -> Vec<F> {
     assert!(vec.len().is_power_of_two());
@@ -13,6 +13,56 @@ pub fn fold_vec<F: Field>(mut vec: Vec<F>, challs: [F; 2]) -> Vec<F> {
     vec
 }
 
+// Compute the Non-Adjacent Form (NAF) of a scalar
+// Returns digits in little-endian order (index 0 is the coefficient of 2^0)
+fn scalar_to_naf<B: BigInteger>(mut s: B) -> Vec<i8> {
+    let mut naf = Vec::new();
+
+    let one = B::from(1u64);
+    while !s.is_zero() {
+        let digit = if s.is_odd() {
+            // Inspect the two lowest bits (n mod 4).
+            if s.as_ref()[0] & 3 == 3 {
+                // 11
+                s.add_with_carry(&one);
+                -1i8
+            } else {
+                // 01
+                s.sub_with_borrow(&one);
+                1i8
+            }
+        } else {
+            0i8
+        };
+        naf.push(digit);
+        s.div2();
+    }
+    naf
+}
+
+// Compute l * chall_l + r * chall_r for one basis-pair using Shamir's trick,
+// where chall_l and chall_r are NAF digit arrays of the challenge scalars
+fn shamirs_trick<G: ScalarMul>(l: G::MulBase, r: G::MulBase, chall_l: &[i8], chall_r: &[i8]) -> G {
+    let len = chall_l.len().max(chall_r.len());
+    let mut acc = G::zero();
+
+    for i in (0..len).rev() {
+        acc.double_in_place();
+
+        match chall_l.get(i).copied().unwrap_or(0) {
+            1 => acc += l,
+            -1 => acc -= l,
+            _ => {}
+        }
+        match chall_r.get(i).copied().unwrap_or(0) {
+            1 => acc += r,
+            -1 => acc -= r,
+            _ => {}
+        }
+    }
+    acc
+}
+
 pub fn fold_basis<G>(vec: Vec<G::MulBase>, challs: [G::ScalarField; 2]) -> Vec<G::MulBase>
 where
     G: ScalarMul,
@@ -22,11 +72,13 @@ where
     let [chall_l, chall_r] = challs;
     let (basis_l, basis_r) = vec.split_at(half_len);
 
+    let chall_l = scalar_to_naf(chall_l.into_bigint());
+    let chall_r = scalar_to_naf(chall_r.into_bigint());
+
     let basis: Vec<G> = basis_l
         .iter()
         .zip(basis_r.iter())
-        //TODO: use wnaf
-        .map(|(l, r)| *l * chall_l + *r * chall_r)
+        .map(|(l, r)| shamirs_trick::<G>(*l, *r, &chall_l, &chall_r))
         .collect();
 
     //TODO: Not sure if this as good as it could be, check later

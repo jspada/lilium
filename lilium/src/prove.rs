@@ -67,7 +67,7 @@ where
         instance: LcsInstance<F, CS, I>,
         witness: Witness<F>,
     ) -> LcsProof<F, CS, IO, S> {
-        let mut transcript = self.transcript.instanciate();
+        let mut transcript = self.transcript.instantiate();
         let proof = self.lcs_key.prove(instance, witness.0, &mut transcript);
         transcript.finish().unwrap();
         proof

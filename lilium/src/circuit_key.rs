@@ -87,16 +87,18 @@ where
         );
         let transcript_builder = TranscriptBuilder::new(vars, ParamResolver::new());
         let folding_transcript = transcript_builder
-            .add_reduction_patter::<F, LcsFolding<F, CS, IO, I, S>>(&folding_key)
+            .add_reduction_pattern::<F, LcsFolding<F, CS, IO, I, S>>(&folding_key)
             .finish();
 
         let transcript_builder = TranscriptBuilder::new(vars, ParamResolver::new());
         let transcript = transcript_builder
-            .add_protocol_patter::<F, LcsProver<CS, I, IO, S>>(&lcs_key)
+            .add_protocol_pattern::<F, LcsProver<CS, I, IO, S>>(&lcs_key)
             .finish();
         let transcript_builder = TranscriptBuilder::new(vars, ParamResolver::new());
         let zerocheck_transcript = transcript_builder
-            .add_reduction_patter::<F, ZerocheckReduction<CS, I>>(&ZerocheckReductionKey::new(vars))
+            .add_reduction_pattern::<F, ZerocheckReduction<CS, I>>(&ZerocheckReductionKey::new(
+                vars,
+            ))
             .finish();
 
         Self {

@@ -89,14 +89,14 @@ where
         let (a, b) = match instance_pair {
             InstancePair::Flcs(a, b) => (a, b),
             InstancePair::Mixed(a, b) => {
-                let mut transcript = self.zerocheck_transcript.instanciate();
+                let mut transcript = self.zerocheck_transcript.instantiate();
                 let b = zerocheck_reduction_key.reduce(b, &mut transcript);
                 transcript.finish_unchecked();
                 (a, b)
             }
             InstancePair::Lcs(a, b) => {
                 let [a, b] = [a, b].map(|instance| {
-                    let mut transcript = self.zerocheck_transcript.instanciate();
+                    let mut transcript = self.zerocheck_transcript.instantiate();
                     let instance = zerocheck_reduction_key.reduce(instance, &mut transcript);
                     transcript.finish_unchecked();
                     instance
@@ -105,7 +105,7 @@ where
             }
         };
         let instances = [a, b];
-        let mut transcript = self.folding_transcript.instanciate();
+        let mut transcript = self.folding_transcript.instantiate();
         let folded =
             self.folding_key
                 .fold::<CS, _, I>(instances, witnesses.map(|w| w.0), &mut transcript);
@@ -125,14 +125,14 @@ where
         let (a, b) = match instances.into() {
             InstancePair::Flcs(a, b) => (a, b),
             InstancePair::Mixed(a, b) => {
-                let mut transcript = self.zerocheck_transcript.instanciate();
+                let mut transcript = self.zerocheck_transcript.instantiate();
                 let b = zerocheck_reduction_key.reduce(b, &mut transcript);
                 transcript.finish_unchecked();
                 (a, b)
             }
             InstancePair::Lcs(a, b) => {
                 let [a, b] = [a, b].map(|instance| {
-                    let mut transcript = self.zerocheck_transcript.instanciate();
+                    let mut transcript = self.zerocheck_transcript.instantiate();
                     let instance = zerocheck_reduction_key.reduce(instance, &mut transcript);
                     transcript.finish_unchecked();
                     instance
@@ -140,7 +140,7 @@ where
                 (a, b)
             }
         };
-        let mut transcript = self.folding_transcript.instanciate();
+        let mut transcript = self.folding_transcript.instantiate();
         let instance = MessageGuard::new([a, b]);
         let instance = LcsFolding::<F, CS, IO, I, S>::verify_reduction(
             &self.folding_key,

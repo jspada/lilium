@@ -113,8 +113,8 @@ fn test<F: Field>() {
         SumcheckVerifier::<F, SparkEvalCheck<2>>::transcript_pattern(&verifier, transcript_builder)
             .finish();
 
-    // instanciating the transcript for the prover
-    let mut transcript: Transcript<F, TestSponge<F>> = transcript_desc.instanciate();
+    // instantiating the transcript for the prover
+    let mut transcript: Transcript<F, TestSponge<F>> = transcript_desc.instantiate();
     // making a proof
     let proof = prover
         .prove(&mut transcript, mle.clone(), challs)
@@ -127,8 +127,8 @@ fn test<F: Field>() {
     let instance = sumcheck::sumcheck::Sum(true_eval.0);
     let instance = MessageGuard::new(instance);
 
-    // instanciate and guard transcript
-    let mut transcript: Transcript<F, TestSponge<F>> = transcript_desc.instanciate();
+    // instantiate and guard transcript
+    let mut transcript: Transcript<F, TestSponge<F>> = transcript_desc.instantiate();
     // let mut transcript = TranscriptGuard::new(transcript, proof);
     let res = Verifier::<F>::verify_reduction(&verifier, instance, transcript.guard(proof));
 

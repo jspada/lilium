@@ -122,12 +122,12 @@ where
             //other lookup commitments
             .point()
             .round::<F, [[C::Commitment; 2]; D], 1>()
-            .add_reduction_patter::<F, SumcheckVerifier<F, SparkEvalCheck<D>>>(
+            .add_reduction_pattern::<F, SumcheckVerifier<F, SparkEvalCheck<D>>>(
                 &key.sumcheck_verifier,
             )
             .round::<F, InstanceEvals<SingleElement<F>, D>, 0>()
             .round::<F, StructureEvals<SingleElement<F>, D>, 0>()
-            .add_reduction_patter::<F, CommittedStructure<F, SparkEvalCheck<D>, C>>(
+            .add_reduction_pattern::<F, CommittedStructure<F, SparkEvalCheck<D>, C>>(
                 &key.committed_structure,
             )
     }

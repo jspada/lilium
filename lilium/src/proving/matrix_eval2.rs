@@ -153,7 +153,7 @@ where
             .repeat::<IO, _>(|builder, i| {
                 FlexibleSpark::transcript_pattern(&key.spark_keys[i], builder)
             })
-            .add_reduction_patter::<F, MultipointBatching<CS, IO>>(&key.batching)
+            .add_reduction_pattern::<F, MultipointBatching<CS, IO>>(&key.batching)
     }
 
     fn verify_reduction<S: Duplex<F>>(

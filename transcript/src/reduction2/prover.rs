@@ -50,7 +50,7 @@ where
         instance: R1::Instance,
         witness: R1::Witness,
     ) -> ProverOutput<R2, R::Proof> {
-        let mut transcript = self.transcript_descriptor.instanciate();
+        let mut transcript = self.transcript_descriptor.instantiate();
         let [] = transcript.send_message(&instance, &self.params);
         let out = R::prove(&self.key, instance, witness, &mut transcript);
         transcript.finish();

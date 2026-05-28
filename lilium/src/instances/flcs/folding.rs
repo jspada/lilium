@@ -48,7 +48,7 @@ where
     fn transcript_pattern(key: &Self::Key, builder: TranscriptBuilder) -> TranscriptBuilder {
         builder
             .round::<F, Self::A, 0>()
-            .add_reduction_patter::<F, SumFold<F, _>>(key.zerofold.sumfold_key())
+            .add_reduction_pattern::<F, SumFold<F, _>>(key.zerofold.sumfold_key())
     }
 
     fn verify_reduction<D: Duplex<F>>(

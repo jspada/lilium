@@ -73,7 +73,7 @@ where
         let sumcheck_verifier = &key.sumcheck_verifier;
         builder
             .round::<F, Self::A, 1>()
-            .add_reduction_patter::<F, SumcheckVerifier<F, LcsSumcheck<F, IO, S>>>(
+            .add_reduction_pattern::<F, SumcheckVerifier<F, LcsSumcheck<F, IO, S>>>(
                 sumcheck_verifier,
             )
             // selectors, w, constants, products

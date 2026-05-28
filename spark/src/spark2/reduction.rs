@@ -78,12 +78,12 @@ where
             .point()
             // Combination challenge.
             .round::<F, [C::Commitment; N], 1>()
-            .add_reduction_patter::<F, SumcheckVerifier<F, SparkOpenSumcheck<N>>>(
+            .add_reduction_pattern::<F, SumcheckVerifier<F, SparkOpenSumcheck<N>>>(
                 &key.sumcheck_verifier,
             )
             .round::<F, InstanceEvals<SingleElement<F>, N>, 0>()
             .round::<F, StructureEvals<SingleElement<F>, N>, 0>()
-            .add_reduction_patter::<F, CommittedStructure<F, SparkOpenSumcheck<N>, C>>(
+            .add_reduction_pattern::<F, CommittedStructure<F, SparkOpenSumcheck<N>, C>>(
                 &key.committed_structure,
             )
     }

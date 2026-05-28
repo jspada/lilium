@@ -63,7 +63,7 @@ where
         instance: R1::Instance,
         proof: R::Proof,
     ) -> Result<R2::Instance, VerificationError<F, R1, R2, R>> {
-        let transcript = self.transcript_descriptor.instanciate();
+        let transcript = self.transcript_descriptor.instantiate();
         let mut transcript = VerifierTranscript::<F, S>::new(transcript);
 
         let instance = transcript.wrap(instance);
