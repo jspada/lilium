@@ -1,15 +1,13 @@
 use crate::{
     polynomials::MultiPoint,
     sumcheck2::oracles::{
-        composite::{OracleParams, PartialOracle, PartialQueryInstance},
+        partial::{OracleEval, OracleParams, PartialOracle, PartialQueryInstance},
         EvalLocation, SumcheckFunction,
     },
 };
 use ark_ff::Field;
 use std::marker::PhantomData;
 use transcript::reduction2::{Message, NoError, Relation};
-
-use super::composite::OracleEval;
 
 #[derive(Clone, Copy, Debug)]
 struct EmptyOracle<F, SF>(PhantomData<(F, SF)>);

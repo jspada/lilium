@@ -7,6 +7,7 @@ pub mod composite;
 pub mod core;
 mod empty;
 mod function;
+pub mod partial;
 pub mod small;
 
 pub use function::{EitherLeft, EitherRight, SumcheckFunction};
