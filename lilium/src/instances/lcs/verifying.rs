@@ -64,14 +64,14 @@ where
         let vars = key.flcs_reduction_key.domain_vars;
         let zerocheck_key = ZerocheckReductionKey::new(vars);
         builder
-            .add_reduction_patter::<F, ZerocheckReduction<C, I>>(&zerocheck_key)
-            .add_reduction_patter::<F, FlcsReduction<C, I, IO, S>>(&key.flcs_reduction_key)
-            .add_reduction_patter::<F, LinearizedInstanceReduction<F, C, IO, S>>(
+            .add_reduction_pattern::<F, ZerocheckReduction<C, I>>(&zerocheck_key)
+            .add_reduction_pattern::<F, FlcsReduction<C, I, IO, S>>(&key.flcs_reduction_key)
+            .add_reduction_pattern::<F, LinearizedInstanceReduction<F, C, IO, S>>(
                 &key.linearized_reduction_key,
             )
-            .add_reduction_patter::<F, MatrixEvalProtocol<F, C, IO>>(&key.matrix_eval_key)
-            .add_reduction_patter::<F, MultipointBatching<C, 3>>(&key.batching)
-            .add_protocol_patter::<F, C>(&key.pcs)
+            .add_reduction_pattern::<F, MatrixEvalProtocol<F, C, IO>>(&key.matrix_eval_key)
+            .add_reduction_pattern::<F, MultipointBatching<C, 3>>(&key.batching)
+            .add_protocol_pattern::<F, C>(&key.pcs)
     }
 
     fn prove(_instance: Self::Instance) -> Self::Proof {

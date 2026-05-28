@@ -31,8 +31,8 @@ fn one_round_protocol() -> TranscriptDescriptor<F, TestSponge> {
 fn descriptor_determinism() {
     let d1 = one_round_protocol();
     let d2 = one_round_protocol();
-    let mut t1 = d1.instanciate();
-    let mut t2 = d2.instanciate();
+    let mut t1 = d1.instantiate();
+    let mut t2 = d2.instantiate();
     let msg = SingleElement(F::from(1337u64));
     let c1: [F; 1] = t1.send_message(&msg).unwrap();
     let c2: [F; 1] = t2.send_message(&msg).unwrap();
@@ -49,8 +49,8 @@ fn descriptor_determinism() {
 #[test]
 fn prover_verifier_agreement() {
     let descriptor = one_round_protocol();
-    let mut prover = descriptor.instanciate();
-    let mut verifier = descriptor.instanciate();
+    let mut prover = descriptor.instantiate();
+    let mut verifier = descriptor.instantiate();
     let msg = SingleElement(F::from(1729u64));
     let p_chal: [F; 1] = prover.send_message(&msg).unwrap();
     let v_chal: [F; 1] = verifier.send_message(&msg).unwrap();
@@ -67,8 +67,8 @@ fn prover_verifier_agreement() {
 #[test]
 fn divergence_detection() {
     let descriptor = one_round_protocol();
-    let mut t_a = descriptor.instanciate();
-    let mut t_b = descriptor.instanciate();
+    let mut t_a = descriptor.instantiate();
+    let mut t_b = descriptor.instantiate();
     let c_a: [F; 1] = t_a.send_message(&SingleElement(F::from(1u64))).unwrap();
     let c_b: [F; 1] = t_b.send_message(&SingleElement(F::from(2u64))).unwrap();
     assert_ne!(
@@ -84,7 +84,7 @@ fn divergence_detection() {
 #[test]
 fn wrong_message_type_rejected() {
     let descriptor = one_round_protocol();
-    let mut transcript = descriptor.instanciate();
+    let mut transcript = descriptor.instantiate();
     // [SingleElement<F>; 1] has a different TypeId than expected SingleElement<F>
     let wrong = [SingleElement(F::from(101u64))];
     let result: Result<[F; 1], Error> = transcript.send_message(&wrong);
@@ -99,7 +99,7 @@ fn wrong_message_type_rejected() {
 #[test]
 fn wrong_challenge_count_rejected() {
     let descriptor = one_round_protocol();
-    let mut transcript = descriptor.instanciate();
+    let mut transcript = descriptor.instantiate();
 
     // Ask send_message to return [F; 2] (two challenges) for this round (incompatible with protocol)
     let result: Result<[F; 2], Error> = transcript.send_message(&SingleElement(F::from(103u64)));
@@ -129,7 +129,7 @@ fn late_send_rejected() {
         // Round 2: prover sends no message; verifier squeezes VARS challenge scalars and replies with point
         .point()
         .finish::<F, TestSponge>();
-    let mut transcript = descriptor.instanciate();
+    let mut transcript = descriptor.instantiate();
     transcript
         .send_message::<SingleElement<F>, 1>(&SingleElement(F::from(109u64)))
         .unwrap();
@@ -143,7 +143,7 @@ fn late_send_rejected() {
 #[test]
 fn premature_finish_rejected() {
     let descriptor = one_round_protocol();
-    let transcript = descriptor.instanciate();
+    let transcript = descriptor.instantiate();
     let result = transcript.finish();
     assert!(matches!(result, Err(Error::SpongeError(_))));
 }
@@ -158,8 +158,8 @@ fn multi_round_agreement() {
         .round::<F, [SingleElement<F>; 3], 1>()
         .round::<F, SingleElement<F>, 2>()
         .finish::<F, TestSponge>();
-    let mut prover = descriptor.instanciate();
-    let mut verifier = descriptor.instanciate();
+    let mut prover = descriptor.instantiate();
+    let mut verifier = descriptor.instantiate();
 
     let m1 = SingleElement(F::from(10u64));
     let m2 = [
@@ -193,8 +193,8 @@ fn point_agreement() {
         .round::<F, SingleElement<F>, 1>()
         .point()
         .finish::<F, TestSponge>();
-    let mut prover = descriptor.instanciate();
-    let mut verifier = descriptor.instanciate();
+    let mut prover = descriptor.instantiate();
+    let mut verifier = descriptor.instantiate();
     let msg = SingleElement(F::from(1000003u64));
     let _: [F; 1] = prover.send_message(&msg).unwrap();
     let _: [F; 1] = verifier.send_message(&msg).unwrap();
@@ -217,8 +217,8 @@ fn message_order_matters() {
         .round::<F, SingleElement<F>, 1>()
         .round::<F, SingleElement<F>, 1>()
         .finish::<F, TestSponge>();
-    let mut ab = descriptor.instanciate();
-    let mut ba = descriptor.instanciate();
+    let mut ab = descriptor.instantiate();
+    let mut ba = descriptor.instantiate();
     let m1 = SingleElement(F::from(31u64));
     let m2 = SingleElement(F::from(32u64));
     let _: [F; 1] = ab.send_message(&m1).unwrap();

@@ -49,7 +49,7 @@ where
     fn transcript_pattern(key: &Self::Key, builder: TranscriptBuilder) -> TranscriptBuilder {
         builder
             .round::<F, Self::A, 1>()
-            .add_reduction_patter::<F, Self::Key>(key)
+            .add_reduction_pattern::<F, Self::Key>(key)
             .round::<F, [SingleElement<F>; N], 1>()
     }
 

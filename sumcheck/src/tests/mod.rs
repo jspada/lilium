@@ -50,7 +50,7 @@ where
     let transcript_desc = sumcheck_transcript::<F, SF>(&verifier, vars);
 
     let prover = SumcheckProver::<F, SF>::new(vars);
-    let mut transcript: Transcript<F, TestSponge<F>> = transcript_desc.instanciate();
+    let mut transcript: Transcript<F, TestSponge<F>> = transcript_desc.instantiate();
     let proof = prover
         .prove(&mut transcript, mle.clone(), &challs)
         .unwrap()
@@ -58,7 +58,7 @@ where
     transcript.finish().unwrap();
 
     let instance = MessageGuard::new(Sum(sum));
-    let mut transcript = transcript_desc.instanciate();
+    let mut transcript = transcript_desc.instantiate();
     let check = {
         let transcript = TranscriptGuard::new(&mut transcript, proof);
         SumcheckVerifier::verify_reduction(&verifier, instance, transcript).unwrap()

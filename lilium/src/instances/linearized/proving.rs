@@ -61,8 +61,8 @@ where
         let sumcheck_verifier = SumcheckVerifier::new(key.domain_vars);
         builder
             .round::<F, Self::A, 1>()
-            .add_reduction_patter::<F, Sumcheck<F, IO>>(&sumcheck_verifier)
-            .add_reduction_patter::<F, CommittedStructure<F, LcsSumcheck<F, IO, S>, CS>>(
+            .add_reduction_pattern::<F, Sumcheck<F, IO>>(&sumcheck_verifier)
+            .add_reduction_pattern::<F, CommittedStructure<F, LcsSumcheck<F, IO, S>, CS>>(
                 &key.selector_commitments,
             )
             .round::<F, SingleElement<F>, 0>()

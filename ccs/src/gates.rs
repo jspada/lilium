@@ -184,7 +184,7 @@ impl Gate<1, 1, 0> for Binary {
 }
 
 /// Gate used to introduce constants to the circuit, it is handled
-/// in a special way and it shouldn't be manually instanciated.
+/// in a special way and it shouldn't be manually instantiated.
 pub struct Constant;
 
 impl Gate<1, 1, 0> for Constant {

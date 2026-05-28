@@ -68,7 +68,7 @@ impl<F: Field, C: CommmitmentScheme<F>, const IO: usize> Key<F, C, IO> {
         proof: MatrixEvalProof<F, CS, IO>,
     ) -> Result<bool, Error> {
         let vars = self.ccs_structure.vars();
-        let mut transcript = self.transcript.instanciate();
+        let mut transcript = self.transcript.instantiate();
 
         let [c1, c2, c3] = transcript
             .send_message(&instance)

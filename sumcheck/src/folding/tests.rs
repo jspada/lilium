@@ -26,11 +26,11 @@ where
     let sumfold_key = SumFold::<F, _>::new(&f);
 
     let transcript_desc = TranscriptBuilder::new(VARS, ParamResolver::new())
-        .add_reduction_patter::<F, SumFold<F, _>>(&sumfold_key)
+        .add_reduction_pattern::<F, SumFold<F, _>>(&sumfold_key)
         .finish::<F, UnsafeSponge<F>>();
 
     let (w3, instance) = {
-        let mut transcript = transcript_desc.instanciate();
+        let mut transcript = transcript_desc.instantiate();
         let instance = SumFoldInstance::new([sums[0], sums[1]]);
         let SumFoldProverOutput {
             instance,
@@ -46,7 +46,7 @@ where
         );
         transcript.finish_unchecked();
 
-        let mut transcript = transcript_desc.instanciate();
+        let mut transcript = transcript_desc.instantiate();
         let instance = MessageGuard::new(instance);
         let reduced =
             SumFold::verify_reduction(&sumfold_key, instance, transcript.guard(proof)).unwrap();
@@ -70,7 +70,7 @@ where
         .finish::<F, UnsafeSponge<F>>();
 
     let out = {
-        let mut transcript = transcript_desc.instanciate();
+        let mut transcript = transcript_desc.instantiate();
         let out = prover
             .prove(&mut transcript, witness, &NoChallenges::default())
             .unwrap();
@@ -79,7 +79,7 @@ where
     };
 
     let reduced = {
-        let mut transcript = transcript_desc.instanciate();
+        let mut transcript = transcript_desc.instantiate();
         let instance = MessageGuard::new(Sum(sum));
 
         let reduced =

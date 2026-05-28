@@ -27,11 +27,11 @@ impl TranscriptBuilder {
         builder
     }
 
-    pub fn add_protocol_patter<F: Field, S: Protocol<F>>(self, key: &S::Key) -> Self {
+    pub fn add_protocol_pattern<F: Field, S: Protocol<F>>(self, key: &S::Key) -> Self {
         S::transcript_pattern(key, self)
     }
 
-    pub fn add_reduction_patter<F: Field, S: Reduction<F>>(self, key: &S::Key) -> Self {
+    pub fn add_reduction_pattern<F: Field, S: Reduction<F>>(self, key: &S::Key) -> Self {
         S::transcript_pattern(key, self)
     }
 
@@ -129,8 +129,8 @@ pub struct TranscriptDescriptor<F: Field, S: Duplex<F>> {
 }
 
 impl<F: Field, S: Duplex<F>> TranscriptDescriptor<F, S> {
-    pub fn instanciate(&self) -> Transcript<F, S> {
-        let sponge = S::instanciate(&self.sponge);
+    pub fn instantiate(&self) -> Transcript<F, S> {
+        let sponge = S::instantiate(&self.sponge);
         let rounds = self.rounds.clone().into_iter();
         Transcript::new(sponge, rounds, self.vars)
     }

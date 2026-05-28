@@ -95,8 +95,8 @@ pub(crate) struct TranscriptDescriptor<F: Field, S: Duplex<F>> {
 }
 
 impl<F: Field, S: Duplex<F>> TranscriptDescriptor<F, S> {
-    pub(crate) fn instanciate(&self) -> Transcript<F, S> {
-        let sponge = S::instanciate(&self.sponge);
+    pub(crate) fn instantiate(&self) -> Transcript<F, S> {
+        let sponge = S::instantiate(&self.sponge);
         let rounds = self.rounds.clone().into_iter();
         Transcript::new(sponge, rounds)
     }

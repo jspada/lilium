@@ -160,7 +160,7 @@ fn test<F: Field>(random_elements: Vec<F>) {
 
     let (witness, sum, folder) = {
         let transcript_desc = TranscriptBuilder::new(VARS, ParamResolver::new())
-            .add_reduction_patter::<F, SumFold<F, _>>(zerofold.sumfold_key())
+            .add_reduction_pattern::<F, SumFold<F, _>>(zerofold.sumfold_key())
             .finish::<F, UnsafeSponge<F>>();
 
         let instance = SumFoldInstance::new([F::zero(), F::zero()]);
@@ -169,7 +169,7 @@ fn test<F: Field>(random_elements: Vec<F>) {
         let w2 = pair2.witness.iter().map(|e| *e.inner()).collect::<Vec<_>>();
 
         let powers = [pair1.powers.clone(), pair2.powers.clone()];
-        let mut transcript = transcript_desc.instanciate();
+        let mut transcript = transcript_desc.instantiate();
         let SumFoldProverOutput {
             instance,
             folded_witness,
@@ -186,7 +186,7 @@ fn test<F: Field>(random_elements: Vec<F>) {
         );
         transcript.finish_unchecked();
 
-        let mut transcript = transcript_desc.instanciate();
+        let mut transcript = transcript_desc.instantiate();
         let transcript_guard = TranscriptGuard::new(&mut transcript, proof);
         let instance = MessageGuard::new(instance);
 
@@ -229,11 +229,11 @@ pub fn prove_and_verify<F: Field>(powers: CompactPowers<F>, mle: Vec<Evals<F>>, 
     let verifier = SumcheckVerifier::<F, ZeroCheckWrapped>::new_symbolic(ZeroCheckWrapped, VARS);
 
     let transcript_desc = TranscriptBuilder::new(VARS, ParamResolver::new())
-        .add_reduction_patter::<F, SumcheckVerifier<F, ZeroCheckWrapped>>(&verifier)
+        .add_reduction_pattern::<F, SumcheckVerifier<F, ZeroCheckWrapped>>(&verifier)
         .finish::<F, UnsafeSponge<F>>();
 
     let reduced = {
-        let mut transcript = transcript_desc.instanciate();
+        let mut transcript = transcript_desc.instantiate();
         let reduced = prover
             .prove_zerocheck(
                 powers.clone(),
@@ -247,7 +247,7 @@ pub fn prove_and_verify<F: Field>(powers: CompactPowers<F>, mle: Vec<Evals<F>>, 
     };
     let ProverOutput { proof, evals, .. } = reduced;
 
-    let mut transcript = transcript_desc.instanciate();
+    let mut transcript = transcript_desc.instantiate();
     let instance = MessageGuard::new(Sum(sum));
 
     let reduced = SumcheckVerifier::verify_reduction(&verifier, instance, transcript.guard(proof));
