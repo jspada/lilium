@@ -3,7 +3,7 @@ use ark_ff::Field;
 use std::marker::PhantomData;
 use transcript::reduction2::{Message, Relation};
 
-fn merge<F: Field, O: Oracle<F>>(
+pub fn merge<F: Field, O: Oracle<F>>(
     structure: &O::Evals<F>,
     instance: &O::Evals<F>,
     witness: &O::Evals<F>,
