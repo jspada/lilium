@@ -13,9 +13,16 @@ pub fn fold_vec<F: Field>(mut vec: Vec<F>, challs: [F; 2]) -> Vec<F> {
     vec
 }
 
+#[derive(Clone, Copy)]
+enum Sign {
+    Plus,
+    Minus,
+    Zero,
+}
+
 // Compute the Non-Adjacent Form (NAF) of a scalar
 // Returns digits in little-endian order (index 0 is the coefficient of 2^0)
-fn scalar_to_naf<B: BigInteger>(mut s: B) -> Vec<i8> {
+fn scalar_to_naf<B: BigInteger>(mut s: B) -> Vec<Sign> {
     let mut naf = Vec::new();
 
     let one = B::from(1u64);
@@ -25,14 +32,14 @@ fn scalar_to_naf<B: BigInteger>(mut s: B) -> Vec<i8> {
             if s.as_ref()[0] & 3 == 3 {
                 // 11
                 s.add_with_carry(&one);
-                -1i8
+                Sign::Minus
             } else {
                 // 01
                 s.sub_with_borrow(&one);
-                1i8
+                Sign::Plus
             }
         } else {
-            0i8
+            Sign::Zero
         };
         naf.push(digit);
         s.div2();
@@ -42,22 +49,49 @@ fn scalar_to_naf<B: BigInteger>(mut s: B) -> Vec<i8> {
 
 // Compute l * chall_l + r * chall_r for one basis-pair using Shamir's trick,
 // where chall_l and chall_r are NAF digit arrays of the challenge scalars
-fn shamirs_trick<G: ScalarMul>(l: G::MulBase, r: G::MulBase, chall_l: &[i8], chall_r: &[i8]) -> G {
+fn shamirs_trick<G: ScalarMul>(
+    l: G::MulBase,
+    r: G::MulBase,
+    l_plus_r: G::MulBase,
+    l_minus_r: G::MulBase,
+    chall_l: &[Sign],
+    chall_r: &[Sign],
+) -> G {
     let len = chall_l.len().max(chall_r.len());
     let mut acc = G::zero();
 
     for i in (0..len).rev() {
         acc.double_in_place();
 
-        match chall_l.get(i).copied().unwrap_or(0) {
-            1 => acc += l,
-            -1 => acc -= l,
-            _ => {}
-        }
-        match chall_r.get(i).copied().unwrap_or(0) {
-            1 => acc += r,
-            -1 => acc -= r,
-            _ => {}
+        match (
+            chall_l.get(i).copied().unwrap_or(Sign::Zero),
+            chall_r.get(i).copied().unwrap_or(Sign::Zero),
+        ) {
+            (Sign::Plus, Sign::Plus) => {
+                acc += l_plus_r;
+            }
+            (Sign::Plus, Sign::Minus) => {
+                acc += l_minus_r;
+            }
+            (Sign::Plus, Sign::Zero) => {
+                acc += l;
+            }
+            (Sign::Minus, Sign::Plus) => {
+                acc -= l_minus_r;
+            }
+            (Sign::Minus, Sign::Minus) => {
+                acc -= l_plus_r;
+            }
+            (Sign::Minus, Sign::Zero) => {
+                acc -= l;
+            }
+            (Sign::Zero, Sign::Plus) => {
+                acc += r;
+            }
+            (Sign::Zero, Sign::Minus) => {
+                acc -= r;
+            }
+            (Sign::Zero, Sign::Zero) => {}
         }
     }
     acc
@@ -72,13 +106,28 @@ where
     let [chall_l, chall_r] = challs;
     let (basis_l, basis_r) = vec.split_at(half_len);
 
+    // Single batch conversion to get combo pairs: (l + r) and (l - r)
+    let combos: Vec<[G::MulBase; 2]> = G::batch_convert_to_mul_base(
+        &basis_l
+            .iter()
+            .zip(basis_r.iter())
+            .flat_map(|(l, r)| [G::from(*l) + G::from(*r), G::from(*l) - G::from(*r)])
+            .collect::<Vec<G>>(),
+    )
+    .chunks_exact(2)
+    .map(|combo| [combo[0], combo[1]])
+    .collect();
+
     let chall_l = scalar_to_naf(chall_l.into_bigint());
     let chall_r = scalar_to_naf(chall_r.into_bigint());
 
     let basis: Vec<G> = basis_l
         .iter()
         .zip(basis_r.iter())
-        .map(|(l, r)| shamirs_trick::<G>(*l, *r, &chall_l, &chall_r))
+        .zip(combos.iter())
+        .map(|((l, r), &[l_plus_r, l_minus_r])| {
+            shamirs_trick::<G>(*l, *r, l_plus_r, l_minus_r, &chall_l, &chall_r)
+        })
         .collect();
 
     //TODO: Not sure if this as good as it could be, check later
