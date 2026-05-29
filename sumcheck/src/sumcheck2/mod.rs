@@ -7,7 +7,7 @@ mod relation;
 
 pub use oracles::OracleQueryInstance;
 pub use reduction::SumcheckReduction;
-pub use relation::{merge, SumcheckInstance, SumcheckRelation};
+pub use relation::{SumcheckInstance, SumcheckRelation};
 
 #[derive(Clone, Debug)]
 /// A message of the sumcheck protocol, represented as

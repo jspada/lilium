@@ -145,3 +145,33 @@ where
         check1 && check2
     }
 }
+
+/// Merges the 3 evals on one according to the provided
+/// location.
+pub fn merge<F: Field, SF: SumcheckFunction<F>>(
+    structure: &SF::Mles<F>,
+    instance: &SF::Mles<F>,
+    witness: &SF::Mles<F>,
+    locations: &SF::Mles<EvalLocation>,
+) -> SF::Mles<F> {
+    use EvalLocation::*;
+
+    let evals: SF::Mles<F> = SF::combine3(
+        [structure, instance],
+        locations,
+        |s: &F, i, l: &EvalLocation| match l {
+            Structure => *s,
+            Instance => *i,
+            Witness => F::ZERO,
+        },
+    );
+
+    SF::combine3(
+        [&evals, witness],
+        locations,
+        |e: &F, w, l: &EvalLocation| match l {
+            Structure | Instance => *e,
+            Witness => *w,
+        },
+    )
+}
