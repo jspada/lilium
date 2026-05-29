@@ -5,6 +5,7 @@ use std::{
 };
 use transcript::reduction2::{Argument, Message, NoError};
 
+pub mod oracle;
 mod relation;
 
 pub use relation::{OpenInstance, OpeningRelation};
