@@ -28,16 +28,16 @@ pub struct CommittedOracle<F: Field, C, SF: SumcheckFunction<F>> {
 
 #[derive(Clone, Copy, Debug)]
 pub enum CommittedNature {
-    CommittedStructure,
-    CommittedWitness,
+    Structure,
+    Witness,
 }
 
 impl From<CommittedNature> for EvalLocation {
     fn from(value: CommittedNature) -> Self {
         use CommittedNature::*;
         match value {
-            CommittedStructure => EvalLocation::Structure,
-            CommittedWitness => EvalLocation::Witness,
+            Structure => EvalLocation::Structure,
+            Witness => EvalLocation::Witness,
         }
     }
 }
@@ -60,7 +60,7 @@ where
         .flatten_vec()
         .into_iter()
         .map(|nature| {
-            if let Some(CommittedNature::CommittedWitness) = Option::from(nature) {
+            if let Some(CommittedNature::Witness) = Option::from(nature) {
                 1
             } else {
                 0
@@ -147,10 +147,7 @@ where
 {
     fn from(value: CommittedOracle<F, C, SF>) -> Self {
         let condition = SF::map_evals(&SF::natures(), |nature| {
-            matches!(
-                Option::from(*nature),
-                Some(CommittedNature::CommittedStructure)
-            )
+            matches!(Option::from(*nature), Some(CommittedNature::Structure))
         });
 
         let structure_commits =
@@ -236,7 +233,7 @@ where
             .flatten_vec()
             .iter()
             .map(|nature| {
-                if let Some(CommittedNature::CommittedWitness) = Option::from(*nature) {
+                if let Some(CommittedNature::Witness) = Option::from(*nature) {
                     Some(expected_commits.next().unwrap())
                 } else {
                     None
@@ -257,10 +254,7 @@ where
             .collect();
 
         let filter = SF::map_evals(&SF::natures(), |nature| {
-            matches!(
-                Option::from(*nature),
-                Some(CommittedNature::CommittedWitness)
-            )
+            matches!(Option::from(*nature), Some(CommittedNature::Witness))
         });
         let commits = commit_filtered::<F, SF, C>(&evals, &structure.scheme, filter);
 
@@ -315,8 +309,8 @@ where
         .into_iter()
         .filter_map(|nature| {
             Option::from(nature).map(|nature| match nature {
-                CommittedNature::CommittedStructure => structure_commits.next().unwrap(),
-                CommittedNature::CommittedWitness => instance_commits.next().unwrap(),
+                CommittedNature::Structure => structure_commits.next().unwrap(),
+                CommittedNature::Witness => instance_commits.next().unwrap(),
             })
         })
         .cloned();
@@ -367,10 +361,7 @@ where
 
     fn verifier_key(oracle: &Self, _: &C) -> Self::VerifierKey {
         let structure_filter = SF::map_evals(&SF::natures(), |nature| {
-            matches!(
-                Option::from(*nature),
-                Some(CommittedNature::CommittedStructure)
-            )
+            matches!(Option::from(*nature), Some(CommittedNature::Structure))
         });
         let commits =
             commit_filtered::<F, SF, C>(&oracle.structure_evals, &oracle.scheme, structure_filter);
