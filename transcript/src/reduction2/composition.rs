@@ -76,10 +76,6 @@ where
         (verifier_key, prover_key)
     }
 
-    fn instance_params(key: &Self::VerifierKey) -> <R1::Instance as Message<F>>::Params {
-        A::instance_params(&key.a_key)
-    }
-
     fn prove<S: Duplex<F>>(
         key: &Self::ProverKey,
         instance: R1::Instance,

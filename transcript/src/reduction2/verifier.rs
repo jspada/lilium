@@ -43,10 +43,12 @@ where
     R: Reduction<F, R1, R2>,
 {
     /// Creates verifier from the structures of both relations.
-    pub fn new(structure_1: &R1::Structure, structure_2: &R2::Structure) -> Self {
+    pub fn new(
+        structure_1: &R1::Structure,
+        structure_2: &R2::Structure,
+        params: <R1::Instance as Message<F>>::Params,
+    ) -> Self {
         let key = R::verifier_key(structure_1, structure_2);
-
-        let params = R::instance_params(&key);
 
         let transcript_descriptor = TranscriptDescriptor::for_reduction::<R1, R2, R>(&key, &params);
 

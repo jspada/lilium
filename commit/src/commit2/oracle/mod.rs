@@ -369,15 +369,6 @@ where
         VerifierKey { structure_commits }
     }
 
-    fn instance_params(
-        _key: &Self::VerifierKey,
-    ) -> <<CommittedQueryRelation<F, C, SF> as Relation>::Instance as Message<F>>::Params
-    where
-        <CommittedQueryRelation<F, C, SF> as Relation>::Instance: Message<F>,
-    {
-        todo!()
-    }
-
     fn key_pair(oracle: &Self, structure_2: &C) -> (Self::VerifierKey, Self::ProverKey) {
         let verifier_key = Self::verifier_key(oracle, structure_2);
         let structure_commits = verifier_key.structure_commits.clone();

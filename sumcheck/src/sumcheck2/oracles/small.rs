@@ -134,16 +134,6 @@ where
         structure_1.clone()
     }
 
-    fn instance_params(
-        key: &Self::VerifierKey,
-    ) -> <<Rel<F, SF> as Relation>::Instance as Message<F>>::Params
-    where
-        <Rel<F, SF> as Relation>::Instance: Message<F>,
-    {
-        let vars = key.vars;
-        ((), vars)
-    }
-
     fn key_pair(
         structure_1: &<Rel<F, SF> as Relation>::Structure,
         _structure_2: &<() as Relation>::Structure,

@@ -301,10 +301,6 @@ where
         }
     }
 
-    fn instance_params(_key: &Self::VerifierKey) -> (OracleParams, usize) {
-        todo!()
-    }
-
     fn key_pair(
         structure_1: &Self,
         structure_2: &(P1, P2),

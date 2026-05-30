@@ -58,8 +58,8 @@ pub enum SumcheckError {
 }
 
 /// The verifier key of the sumcheck reduction.
-pub struct SumcheckVerifierKey<F: Field, O: Oracle<F>> {
-    oracle_instance_params: <SumcheckInstance<F, O> as Message<F>>::Params,
+pub struct SumcheckVerifierKey<F: Field> {
+    // oracle_instance_params: <SumcheckInstance<F, O> as Message<F>>::Params,
     degree: usize,
     vars: usize,
     weights: BarycentricWeights<F>,
@@ -70,7 +70,7 @@ impl<F: Field, O: Oracle<F>> Reduction<F, SumcheckRelation<F, O>, QueryRelation<
 {
     type ProverKey = prove::ProverKey<F, O>;
 
-    type VerifierKey = SumcheckVerifierKey<F, O>;
+    type VerifierKey = SumcheckVerifierKey<F>;
 
     type Proof = Vec<SumcheckMessage<F>>;
 
@@ -95,10 +95,10 @@ impl<F: Field, O: Oracle<F>> Reduction<F, SumcheckRelation<F, O>, QueryRelation<
 
         let weights = BarycentricWeights::compute(degree as u32);
 
-        let oracle_instance_params = structure_1.oracle_params();
+        // let oracle_instance_params = structure_1.oracle_params();
 
         SumcheckVerifierKey {
-            oracle_instance_params,
+            // oracle_instance_params,
             degree,
             vars,
             weights,
@@ -112,15 +112,6 @@ impl<F: Field, O: Oracle<F>> Reduction<F, SumcheckRelation<F, O>, QueryRelation<
         let verifier_key = Self::verifier_key(structure_1, structure_2);
         let prover_key = prove::ProverKey::new(structure_1);
         (verifier_key, prover_key)
-    }
-
-    fn instance_params(
-        key: &Self::VerifierKey,
-    ) -> <<SumcheckRelation<F, O> as Relation>::Instance as Message<F>>::Params
-    where
-        <SumcheckRelation<F, O> as Relation>::Instance: Message<F>,
-    {
-        key.oracle_instance_params
     }
 
     fn verify<S: Duplex<F>>(

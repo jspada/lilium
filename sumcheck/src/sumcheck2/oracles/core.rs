@@ -301,18 +301,6 @@ where
         oracle.clone()
     }
 
-    fn instance_params(
-        _key: &Self::VerifierKey,
-    ) -> <<CoreQueryRelation<F, SF> as Relation>::Instance as Message<F>>::Params
-    where
-        <CoreQueryRelation<F, SF> as Relation>::Instance: Message<F>,
-    {
-        // This method is only called when using the reduction at the top level
-        // to crate a prover or verifier. Something which shouldn't be possible
-        // as the instance doesn't implement message.
-        unreachable!()
-    }
-
     fn key_pair(oracle: &Self, _: &()) -> (Self::VerifierKey, Self::ProverKey) {
         (oracle.clone(), oracle.clone())
     }
