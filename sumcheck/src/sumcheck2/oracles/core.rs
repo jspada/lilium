@@ -1,7 +1,8 @@
 use crate::{
-    polynomials::{Evals, MultiPoint},
+    polynomials::MultiPoint,
     sumcheck2::oracles::{
         composite::Either,
+        function::Evals,
         partial::{OracleEval, OracleParams, PartialOracle, PartialQueryInstance},
         EvalLocation, SumcheckFunction,
     },

@@ -1,4 +1,4 @@
-use crate::polynomials::{Evals, MultiPoint};
+use crate::polynomials::MultiPoint;
 use ark_ff::Field;
 use std::{fmt::Debug, marker::PhantomData, rc::Rc};
 use transcript::reduction2::{Message, Relation};
@@ -10,7 +10,7 @@ mod function;
 pub mod partial;
 pub mod small;
 
-pub use function::SumcheckFunction;
+pub use function::{Evals, EvalsExt, SumcheckFunction};
 
 #[derive(Clone, Debug)]
 /// An instance in the QueryRelation, made up of an instance of

@@ -1,7 +1,8 @@
 use crate::{
-    polynomials::{Evals, EvalsExt, MultiPoint},
+    polynomials::MultiPoint,
     sumcheck2::{
         oracles::{
+            function::{Evals, EvalsExt},
             partial::{
                 OracleEval, OracleParams, PartialOracle, PartialQueryInstance, PartialQueryRelation,
             },
@@ -166,8 +167,8 @@ where
         let natures = SF::natures();
         let instance_evals = <Self as Oracle<F>>::instance_evals(instance);
         // TODO: Evaluate only what's needed of each.
-        let witness_evals = EvalsExt::eval(witness, point.clone());
-        let structure_evals = EvalsExt::eval(&self.mles, point.clone());
+        let witness_evals = EvalsExt::eval(witness, point);
+        let structure_evals = EvalsExt::eval(&self.mles, point);
 
         let locations = SF::map_evals(&natures, |nature| match nature {
             Either::Left(n) => (*n).into(),
@@ -322,7 +323,7 @@ where
         } = instance;
         //PERF: This computation is a byproduct of sumcheck, it would be good
         //to reuse it instead of recomputing it here.
-        let evals = EvalsExt::eval(&witness, point.clone());
+        let evals = EvalsExt::eval(&witness, &point);
         assert_eq!(eval, key.f.function(&evals));
 
         //NOTE: The call to P1::evals isn't strictcly necessary, but doing
@@ -531,7 +532,7 @@ where
     fn instance_evals(instance: &Self::Instance) -> <SF as SumcheckFunction<F>>::Mles<F> {
         let evals1 = P1::instance_evals(&instance.oracle1_instance);
         let evals2 = P2::instance_evals(&instance.oracle2_instance);
-        evals1.combine(&evals2, |e1, e2| e1 + e2)
+        evals1.combine(&evals2, |e1, e2| *e1 + e2)
     }
 
     fn evals(
@@ -548,7 +549,7 @@ where
                 // (Computed(_), ProverProvided) => todo!(),
                 // (ProverProvided, Computed(_)) => todo!(),
                 // (ProverProvided, ProverProvided) => todo!(),
-                (Computed(e), None) | (None, Computed(e)) => Computed(e),
+                (Computed(e), None) | (None, Computed(e)) => Computed(*e),
                 (ProverProvided, None) | (None, ProverProvided) => ProverProvided,
                 (None, None) => None,
                 _ => unreachable!(),

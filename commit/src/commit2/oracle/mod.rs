@@ -3,10 +3,10 @@ use ark_ff::Field;
 use sponge::sponge::Duplex;
 use std::{convert::identity, marker::PhantomData, rc::Rc};
 use sumcheck::{
-    polynomials::{Evals, EvalsExt, MultiPoint},
+    polynomials::MultiPoint,
     sumcheck2::oracles::{
         partial::{merge, OracleEval, OracleParams, PartialOracle, PartialQueryInstance},
-        EvalLocation, SumcheckFunction,
+        EvalLocation, Evals, EvalsExt, SumcheckFunction,
     },
 };
 use transcript::reduction2::{
@@ -258,7 +258,7 @@ where
         });
         let commits = commit_filtered::<F, SF, C>(&evals, &structure.scheme, filter);
 
-        let point_evals = EvalsExt::eval(&evals, instance.point().clone());
+        let point_evals = EvalsExt::eval(&evals, instance.point());
 
         let valid_evals = SF::combine(
             &expected_evals,

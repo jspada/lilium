@@ -1,6 +1,6 @@
-use crate::{polynomials::Evals, sumcheck::Var};
+use crate::{eq::eq, polynomials::MultiPoint, sumcheck::Var};
 use ark_ff::Field;
-use std::fmt::Debug;
+use std::{fmt::Debug, vec::IntoIter};
 
 /// The definition of a multivariate polynomial as some function
 /// of multilinear polynomials.
@@ -47,3 +47,45 @@ pub trait SumcheckFunction<F: Field>: Debug + Clone + 'static {
 
     fn function<V: Var<F> + Debug>(&self, evals: &Self::Mles<V>) -> V;
 }
+
+pub trait Evals<V>: Sized + Clone {
+    // type Idx: Copy;
+    // fn index(&self, index: Self::Idx) -> &V;
+    /// should combine 2 [Self] into one by using `f` to combine each element
+    fn combine<C: Fn(&V, &V) -> V>(&self, other: &Self, f: C) -> Self;
+    /// Flatten all elements into a vec, each element should be pushed into the vec.
+    fn flatten(self, vec: &mut Vec<V>);
+    /// Unflatten Self from elems, can be assumed to be the output of flatten.
+    fn unflatten(elems: &mut IntoIter<V>) -> Self;
+    fn flatten_vec(self) -> Vec<V> {
+        let mut vec = vec![];
+        self.flatten(&mut vec);
+        vec
+    }
+    fn unflatten_vec(vec: Vec<V>) -> Self {
+        let mut iter = vec.into_iter();
+        Self::unflatten(&mut iter)
+    }
+}
+
+pub trait EvalsExt<F: Field>: Evals<F> + Sized {
+    fn eval(mles: &[Self], point: &MultiPoint<F>) -> Self {
+        use std::iter::Iterator;
+        assert_eq!(
+            mles.len().ilog2() as usize,
+            point.vars(),
+            "number of variables mismatch"
+        );
+        let eq: Vec<F> = eq(point);
+        let dummy = mles[0].clone().flatten_vec();
+        let dummy: Self = Self::unflatten_vec(vec![F::zero(); dummy.len()]);
+
+        eq.into_iter().zip(mles).fold(dummy.clone(), |acc, x| {
+            let acc: Self = acc;
+            let (eq_eval, eval): (F, &Self) = x;
+            acc.combine(eval, |a, b| *a + *b * eq_eval)
+        })
+    }
+}
+
+impl<F: Field, E: Evals<F>> EvalsExt<F> for E {}
