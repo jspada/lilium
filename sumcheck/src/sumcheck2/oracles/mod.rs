@@ -10,7 +10,7 @@ mod function;
 pub mod partial;
 pub mod small;
 
-pub use function::{EitherLeft, EitherRight, SumcheckFunction};
+pub use function::SumcheckFunction;
 
 #[derive(Clone, Debug)]
 /// An instance in the QueryRelation, made up of an instance of
@@ -121,7 +121,7 @@ pub trait Oracle<F: Field>: 'static + Clone + Debug
 where
     <Self::Instance as Message<F>>::Error: Clone,
 {
-    type Evals<V>: Evals<V> + From<Mles<F, Self, V>> + Into<Mles<F, Self, V>>;
+    type Evals<V: Debug>: Evals<V> + From<Mles<F, Self, V>> + Into<Mles<F, Self, V>>;
     type Function: SumcheckFunction<F, Mles<F> = Self::Evals<F>>;
     type Instance: Message<F> + Clone;
     type Witness;

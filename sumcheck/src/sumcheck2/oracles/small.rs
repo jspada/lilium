@@ -7,7 +7,7 @@ use crate::{
 };
 use ark_ff::Field;
 use sponge::sponge::Duplex;
-use std::rc::Rc;
+use std::{fmt::Debug, rc::Rc};
 use transcript::reduction2::{
     Argument, GuardedProof, Message, ProverOutput, Reduction, Relation, Transcript,
     TranscriptBuilder, VerifierTranscript,
@@ -62,7 +62,7 @@ impl From<SmallNature> for EvalLocation {
 }
 
 impl<F: Field, SF: SumcheckFunction<F>> Oracle<F> for SmallEvalOracle<F, SF> {
-    type Evals<V> = SF::Mles<V>;
+    type Evals<V: Debug> = SF::Mles<V>;
 
     type Function = SF;
 
