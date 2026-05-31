@@ -93,7 +93,7 @@ impl<F: Field, SF: SumcheckFunction<F>> Oracle<F> for SmallEvalOracle<F, SF> {
     fn witness_from_evals(_evals: &[Self::Evals<F>]) -> Self::Witness {}
 
     fn instance_evals(_instance: &()) -> Self::Evals<F> {
-        Default::default()
+        SF::map_evals(&SF::natures(), |_| F::ZERO)
     }
 
     fn natures(&self) -> Self::Evals<Self::Nature> {

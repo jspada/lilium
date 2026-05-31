@@ -5,7 +5,7 @@ use std::{fmt::Debug, marker::PhantomData};
 /// The definition of a multivariate polynomial as some function
 /// of multilinear polynomials.
 pub trait SumcheckFunction<F: Field>: Debug + Clone + 'static {
-    type Mles<V>: Evals<V> + Debug + Default;
+    type Mles<V>: Evals<V> + Debug;
     type Natures: Copy + Debug;
 
     fn natures() -> Self::Mles<Self::Natures>;
