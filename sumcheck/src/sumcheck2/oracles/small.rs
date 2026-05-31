@@ -62,7 +62,7 @@ impl From<SmallNature> for EvalLocation {
 }
 
 impl<F: Field, SF: SumcheckFunction<F>> Oracle<F> for SmallEvalOracle<F, SF> {
-    type Evals<V: Debug> = SF::Mles<V>;
+    type Evals<V: Clone + Debug> = SF::Mles<V>;
 
     type Function = SF;
 

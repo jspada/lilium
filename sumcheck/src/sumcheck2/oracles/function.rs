@@ -5,27 +5,27 @@ use std::{fmt::Debug, vec::IntoIter};
 /// The definition of a multivariate polynomial as some function
 /// of multilinear polynomials.
 pub trait SumcheckFunction<F: Field>: Debug + Clone + 'static {
-    type Mles<V: Debug>: Evals<V> + Debug;
+    type Mles<V: Clone + Debug>: Evals<V>;
     type Natures: Copy + Debug;
 
     fn natures() -> Self::Mles<Self::Natures>;
 
     fn map_evals<A, B, M>(evals: &Self::Mles<A>, f: M) -> Self::Mles<B>
     where
-        A: Debug,
-        B: Debug,
+        A: Clone + Debug,
+        B: Clone + Debug,
         M: Fn(&A) -> B;
 
     fn combine<A, B, C, M>(a: &Self::Mles<A>, b: &Self::Mles<B>, f: M) -> Self::Mles<C>
     where
-        A: Debug,
-        B: Debug,
-        C: Debug,
+        A: Clone + Debug,
+        B: Clone + Debug,
+        C: Clone + Debug,
         M: Fn(&A, &B) -> C;
 
     fn apply<A, M>(a: &mut Self::Mles<A>, f: M)
     where
-        A: Debug,
+        A: Clone + Debug,
         M: Fn(&mut A);
 
     fn combine_mut_conditional<A, B, M>(
@@ -34,21 +34,21 @@ pub trait SumcheckFunction<F: Field>: Debug + Clone + 'static {
         c: Self::Mles<bool>,
         f: M,
     ) where
-        A: Debug,
-        B: Debug,
+        A: Clone + Debug,
+        B: Clone + Debug,
         M: Fn(&mut A, &B, bool);
 
     fn combine3<A, B, C, M>(a: [&Self::Mles<A>; 2], b: &Self::Mles<B>, f: M) -> Self::Mles<C>
     where
-        A: Debug,
-        B: Debug,
-        C: Debug,
+        A: Clone + Debug,
+        B: Clone + Debug,
+        C: Clone + Debug,
         M: Fn(&A, &A, &B) -> C;
 
     fn function<V: Var<F> + Debug>(&self, evals: &Self::Mles<V>) -> V;
 }
 
-pub trait Evals<V>: Sized + Clone {
+pub trait Evals<V: Clone + Debug>: Sized + Clone + Debug {
     // type Idx: Copy;
     // fn index(&self, index: Self::Idx) -> &V;
     /// should combine 2 [Self] into one by using `f` to combine each element
@@ -68,7 +68,7 @@ pub trait Evals<V>: Sized + Clone {
     }
 }
 
-pub trait EvalsExt<F: Field>: Evals<F> + Sized {
+pub trait EvalsExt<F: Field>: Evals<F> {
     fn eval(mles: &[Self], point: &MultiPoint<F>) -> Self {
         use std::iter::Iterator;
         assert_eq!(

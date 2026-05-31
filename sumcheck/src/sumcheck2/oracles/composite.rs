@@ -112,7 +112,7 @@ where
     P1: PartialOracle<F, SF>,
     P2: PartialOracle<F, SF>,
 {
-    type Evals<V: Debug> = SF::Mles<V>;
+    type Evals<V: Clone + Debug> = SF::Mles<V>;
 
     type Function = SF;
 

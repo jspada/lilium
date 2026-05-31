@@ -121,7 +121,7 @@ pub trait Oracle<F: Field>: 'static + Clone + Debug
 where
     <Self::Instance as Message<F>>::Error: Clone,
 {
-    type Evals<V: Debug>: Evals<V> + From<Mles<F, Self, V>> + Into<Mles<F, Self, V>>;
+    type Evals<V: Clone + Debug>: Evals<V> + From<Mles<F, Self, V>> + Into<Mles<F, Self, V>>;
     type Function: SumcheckFunction<F, Mles<F> = Self::Evals<F>>;
     type Instance: Message<F> + Clone;
     type Witness;
