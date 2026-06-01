@@ -5,6 +5,7 @@ edition = "2021"
 description = "The Lilium proof-system"
 repository = "https://github.com/fabrizio-m/lilium"
 license = "MIT OR Apache-2.0"
+autobenches = false
 
 [dependencies]
 ark-ff = { version = "0.4", default-features = false }
@@ -12,9 +13,9 @@ ccs = { workspace = true }
 sumcheck = { workspace = true }
 commit = { workspace = true }
 spark = { workspace = true}
-sponge = { workspace = true } 
+sponge = { workspace = true }
 transcript = { workspace = true }
-hash-to-curve = { workspace = true, optional = true } 
+hash-to-curve = { workspace = true, optional = true }
 ark-vesta = { version = "0.4", optional = true }
 
 [dev-dependencies]
@@ -32,7 +33,13 @@ simple = ["dep:ark-vesta", "ipa"]
 bench = false
 
 [[bench]]
-name = "runtime"
+name = "exectime"
+path = "benches/exectime/main.rs"
+harness = false
+
+[[bench]]
+name = "memory"
+path = "benches/memory/main.rs"
 harness = false
 
 [[example]]

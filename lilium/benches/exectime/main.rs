@@ -151,7 +151,7 @@ where
 }
 
 fn commit_folding(c: &mut Criterion) {
-    let mut group = c.benchmark_group("Commit and fold");
+    let mut group = c.benchmark_group("Commit and Fold Time");
     group.sampling_mode(SamplingMode::Flat);
     let mut rng = StdRng::seed_from_u64(0);
 
