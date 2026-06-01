@@ -1,5 +1,6 @@
 //! New sumcheck implementation based on the new Reduction.
 
+pub mod evals;
 pub mod oracles;
 mod prove;
 mod reduction;
