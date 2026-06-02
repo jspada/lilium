@@ -14,6 +14,7 @@ use ark_ff::{fields::batch_inversion, Field};
 pub(crate) struct BarycentricWeights<F: Field> {
     weights: Vec<F>,
     neg_domain: Vec<F>,
+    ext_coeffs: Vec<F>,
 }
 
 impl<F: Field> BarycentricWeights<F> {
@@ -32,11 +33,30 @@ impl<F: Field> BarycentricWeights<F> {
                 .fold(F::one(), |acc, x| acc * x);
             weights.push(weight);
         }
+
+        // Precompute extend coefficients at constant point = degree + 1.
+        // This is safe because this point lies outside the domain and we
+        // have the invariant that no term is zero.
+        let ext_point = F::from(degree as u32 + 1);
+        let vanishing_factors: Vec<F> = neg_domain.iter().map(|neg_x| *neg_x + ext_point).collect();
+        let vanishing_eval = vanishing_factors.iter().fold(F::one(), |acc, t| acc * t);
+        let mut ext_coeffs: Vec<F> = vanishing_factors
+            .iter()
+            .zip(&weights)
+            .map(|(f, w)| *f * w)
+            .collect();
+        batch_inversion(&mut ext_coeffs);
+        for c in ext_coeffs.iter_mut() {
+            *c *= vanishing_eval;
+        }
+
         Self {
             weights,
             neg_domain,
+            ext_coeffs,
         }
     }
+
     pub(crate) fn evaluate(&self, evals: &[F], point: F) -> F {
         assert_eq!(self.weights.len(), evals.len());
         let terms: Vec<F> = self.neg_domain.iter().map(|neg_x| *neg_x + point).collect();
@@ -66,9 +86,13 @@ impl<F: Field> BarycentricWeights<F> {
 
     /// Returns evaluation for x = evals.len().
     pub fn extend(&self, evals: &[F]) -> F {
-        let point = self.weights.len() as u32;
-        let point = F::from(point);
-        self.evaluate(evals, point)
+        assert_eq!(self.ext_coeffs.len(), evals.len());
+        // Shortcut by evaluating p(x) = sum_i ext_coeffs[i] * evals[i] with
+        // precomputed coefficients, thus avoiding batch_inversions in evaluate()
+        self.ext_coeffs
+            .iter()
+            .zip(evals)
+            .fold(F::zero(), |acc, (c, e)| acc + *c * e)
     }
 }
 

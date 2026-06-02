@@ -52,8 +52,10 @@ impl<F: Field> Message<F> {
 
     /// Adds an extra evaluation to handle a bigger degree.
     pub(crate) fn extend(self, weights: &BarycentricWeights<F>) -> Self {
-        let next_point = F::from(self.degree() as u32 + 1);
-        let message_extra_eval = self.eval_at_x(next_point, weights);
+        assert_eq!(self.0.len(), weights.domain_size());
+        // The message length equals the weights length, so the next point is the constant
+        // out-of-domain point that weights.extend(...) has already been precomputed for
+        let message_extra_eval = weights.extend(&self.0);
         let evals = self.0.into_iter().chain([message_extra_eval]);
         Self(evals.collect())
     }
