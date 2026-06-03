@@ -1,8 +1,53 @@
 use crate::Case;
-use syn::{Ident, Stmt, TraitItemFn, Type, TypeParam, parse_quote};
+use syn::{
+    GenericArgument, Ident, PathArguments, PathSegment, Stmt, TraitItemFn, Type, TypeParam,
+    parse_quote,
+};
+
+fn substitute(ty: &Type, from: &Ident, to: &Type) -> Type {
+    match ty.clone() {
+        Type::Array(mut type_array) => {
+            let ty = &type_array.elem;
+            let ty = substitute(ty, from, to);
+            type_array.elem = Box::new(ty);
+            Type::Array(type_array)
+        }
+        Type::Paren(mut type_paren) => {
+            let ty = substitute(&type_paren.elem, from, to);
+            type_paren.elem = Box::new(ty);
+            Type::Paren(type_paren)
+        }
+        Type::Path(mut type_path) => {
+            if let Some(PathSegment {
+                ident: _,
+                arguments: PathArguments::AngleBracketed(args),
+            }) = type_path.path.segments.last_mut()
+            {
+                for arg in args.args.iter_mut() {
+                    if let GenericArgument::Type(Type::Path(path)) = arg
+                        && path.path.is_ident(from)
+                    {
+                        *arg = GenericArgument::Type(to.clone());
+                    }
+                }
+            }
+            Type::Path(type_path)
+        }
+        Type::Tuple(mut type_tuple) => {
+            for elem in type_tuple.elems.iter_mut() {
+                let ty = substitute(elem, from, to);
+                *elem = ty;
+            }
+            Type::Tuple(type_tuple)
+        }
+        ty => ty,
+    }
+}
 
 pub fn impl_map(fields: &[(Ident, Type)], var: &TypeParam, name: &Ident) -> TraitItemFn {
     let constructor_fields: Vec<Ident> = fields.iter().map(|(ident, _)| ident.clone()).collect();
+    let generic_b: Type = parse_quote!(B);
+    let unit: Type = parse_quote!(());
     let fields: Vec<Stmt> = Case::process(fields, var)
         .into_iter()
         .map(|(ident, ty)| match ty {
@@ -11,12 +56,16 @@ pub fn impl_map(fields: &[(Ident, Type)], var: &TypeParam, name: &Ident) -> Trai
                     let #ident: B = f(&evals.#ident);
                 }
             }
-            Case::Type(_ty) => {
-                todo!()
+            Case::Type(ty) => {
+                let instance = substitute(&ty, &var.ident, &unit);
+                let ty = substitute(&ty, &var.ident, &generic_b);
+                parse_quote! {
+                    let #ident: #ty = <#instance>::map_evals(&evals.#ident, &f);
+                }
             }
             Case::VarArray(len) => {
                 parse_quote! {
-                    let #ident: [B; #len] = evals.#ident.each_ref().map(f);
+                    let #ident: [B; #len] = evals.#ident.each_ref().map(&f);
                 }
             }
             Case::TypeArray(_ty, _var) => {

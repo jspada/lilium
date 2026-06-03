@@ -13,7 +13,7 @@ pub fn impl_combine(fields: &[(Ident, Type)], var: &TypeParam) -> TraitItemFn {
             }
             Case::Type(ty) => {
                 parse_quote! {
-                    let #ident: #ty = &self.#ident.combine(&other.#ident, f);
+                    let #ident: #ty = self.#ident.combine(&other.#ident, f);
                 }
             }
             Case::VarArray(len) => {
@@ -46,7 +46,11 @@ pub fn impl_flatten(fields: &[(Ident, Type)], var: &TypeParam) -> TraitItemFn {
                     vec.push(self.#ident);
                 }
             }
-            Case::Type(_) => todo!(),
+            Case::Type(_) => {
+                parse_quote! {
+                    self.#ident.flatten(vec);
+                }
+            }
             Case::VarArray(_len) => {
                 parse_quote! {
                     vec.extend(self.#ident);
@@ -73,7 +77,11 @@ pub fn impl_unflatten(fields: &[(Ident, Type)], var: &TypeParam) -> TraitItemFn 
                     let #ident: #var = elems.next().unwrap();
                 }
             }
-            Case::Type(_) => todo!(),
+            Case::Type(ty) => {
+                parse_quote! {
+                    let #ident: #ty = <#ty>::unflatten(elems);
+                }
+            }
             Case::VarArray(len) => {
                 parse_quote! {
                     let #ident: [#var; #len] = {
