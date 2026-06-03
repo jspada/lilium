@@ -50,7 +50,7 @@ pub fn derive_evals(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let map_evals = evals::impl_map(&fields, &var, &name);
     let evals_combine = evals::impl_combine(&fields, &var, &name);
-    let apply = evals::impl_apply(&fields, &var, &name);
+    let apply = evals::impl_apply(&fields, &var);
     let combine_mut = evals::impl_combine_mut(&fields, &var, &name);
     let combine3 = evals::impl_combine3(&fields, &var, &name);
 
