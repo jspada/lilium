@@ -68,8 +68,14 @@ pub fn impl_map(fields: &[(Ident, Type)], var: &TypeParam, name: &Ident) -> Trai
                     let #ident: [B; #len] = evals.#ident.each_ref().map(&f);
                 }
             }
-            Case::TypeArray(_ty, _var) => {
-                todo!()
+            Case::TypeArray(ty, len) => {
+                let instance = substitute(&ty, &var.ident, &unit);
+                let ty = substitute(&ty, &var.ident, &generic_b);
+                parse_quote! {
+                    let #ident: [#ty; #len] = evals.#ident.each_ref().map(|elem| {
+                        <#instance>::map_evals(elem, &f)
+                    });
+                }
             }
         })
         .collect();

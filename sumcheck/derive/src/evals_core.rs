@@ -13,7 +13,7 @@ pub fn impl_combine(fields: &[(Ident, Type)], var: &TypeParam) -> TraitItemFn {
             }
             Case::Type(ty) => {
                 parse_quote! {
-                    let #ident: #ty = self.#ident.combine(&other.#ident, f);
+                    let #ident: #ty = self.#ident.combine(&other.#ident, &f);
                 }
             }
             Case::VarArray(len) => {
@@ -24,7 +24,14 @@ pub fn impl_combine(fields: &[(Ident, Type)], var: &TypeParam) -> TraitItemFn {
                     };
                 }
             }
-            Case::TypeArray(_, _expr) => todo!(),
+            Case::TypeArray(ty, len) => {
+                parse_quote! {
+                    let #ident: [#ty; #len] = {
+                        let mut other = other.#ident.iter();
+                        self.#ident.each_ref().map(|a| a.combine(other.next().unwrap(), &f))
+                    };
+                }
+            }
         })
         .collect();
     parse_quote! {
@@ -56,7 +63,11 @@ pub fn impl_flatten(fields: &[(Ident, Type)], var: &TypeParam) -> TraitItemFn {
                     vec.extend(self.#ident);
                 }
             }
-            Case::TypeArray(_, _len) => todo!(),
+            Case::TypeArray(_ty, len) => {
+                parse_quote! {
+                    let _: [(); #len] = self.#ident.map(|elem| elem.flatten(vec));
+                }
+            }
         })
         .collect();
     parse_quote! {
@@ -90,7 +101,11 @@ pub fn impl_unflatten(fields: &[(Ident, Type)], var: &TypeParam) -> TraitItemFn 
                     };
                 }
             }
-            Case::TypeArray(_, _len) => todo!(),
+            Case::TypeArray(ty, len) => {
+                parse_quote! {
+                    let #ident: [#ty; #len] = [(); #len].map(|_| <#ty>::unflatten(elems));
+                }
+            }
         })
         .collect();
     parse_quote! {
