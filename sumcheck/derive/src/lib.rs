@@ -85,7 +85,8 @@ fn is_var(ty: &Type, var: &TypeParam) -> bool {
 enum Case {
     Var,
     Type(Type),
-    Array(Type, Expr),
+    VarArray(Expr),
+    TypeArray(Type, Expr),
 }
 
 impl Case {
@@ -93,10 +94,15 @@ impl Case {
         fields
             .iter()
             .map(|(ident, ty)| {
-                let is_var = is_var(ty, var);
-                let ty: Self = match (is_var, ty) {
+                let ty: Self = match (is_var(ty, var), ty) {
                     (true, _) => Case::Var,
-                    (false, Type::Array(ty)) => Case::Array(*ty.elem.clone(), ty.len.clone()),
+                    (false, Type::Array(ty)) => {
+                        if is_var(&ty.elem, var) {
+                            Case::VarArray(ty.len.clone())
+                        } else {
+                            Case::TypeArray(*ty.elem.clone(), ty.len.clone())
+                        }
+                    }
                     (false, ty) => Case::Type(ty.clone()),
                 };
                 (ident.clone(), ty)

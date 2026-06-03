@@ -14,10 +14,13 @@ pub fn impl_map(fields: &[(Ident, Type)], var: &TypeParam, name: &Ident) -> Trai
             Case::Type(_ty) => {
                 todo!()
             }
-            Case::Array(ty, len) => {
+            Case::VarArray(len) => {
                 parse_quote! {
-                    let #ident: [#ty, #len] = &evals.#ident.each_ref().map(|elem| f(elem));
+                    let #ident: [_, #len] = &evals.#ident.each_ref().map(|elem| f(elem));
                 }
+            }
+            Case::TypeArray(_ty, _var) => {
+                todo!()
             }
         })
         .collect();
