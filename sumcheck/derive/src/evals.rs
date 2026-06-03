@@ -94,7 +94,50 @@ pub fn impl_map(fields: &[(Ident, Type)], var: &TypeParam, name: &Ident) -> Trai
     }
 }
 
-pub fn impl_combine(_fields: &[(Ident, Type)], _var: &TypeParam, _name: &Ident) -> TraitItemFn {
+pub fn impl_combine(fields: &[(Ident, Type)], var: &TypeParam, name: &Ident) -> TraitItemFn {
+    let constructor_fields: Vec<Ident> = fields.iter().map(|(ident, _)| ident.clone()).collect();
+    let generic_c: Type = parse_quote!(C);
+    let unit: Type = parse_quote!(());
+    //
+    let fields: Vec<Stmt> = Case::process(fields, var)
+        .into_iter()
+        .map(|(ident, ty)| match ty {
+            Case::Var => {
+                parse_quote! {
+                    let #ident: C = f(&a.#ident, &b.#ident);
+                }
+            }
+            Case::Type(ty) => {
+                let instance = substitute(&ty, &var.ident, &unit);
+                let ty = substitute(&ty, &var.ident, &generic_c);
+                parse_quote! {
+                    let #ident: #ty = <#instance as Evals>::combine(&a.#ident, &b.#ident, &f);
+                }
+            }
+            Case::VarArray(len) => {
+                parse_quote! {
+                    let #ident: [C; #len] = {
+                        let mut b = b.#ident.iter();
+                        a.#ident.each_ref().map(|a| f(a, b.next().unwrap()))
+                    };
+                }
+            }
+            Case::TypeArray(ty, len) => {
+                let instance = substitute(&ty, &var.ident, &unit);
+                let ty = substitute(&ty, &var.ident, &generic_c);
+                parse_quote! {
+                    let #ident: [#ty; #len] = {
+                        let mut b = b.#ident.iter();
+                        a.#ident.each_ref().map(|a| {
+                            let b = b.next().unwrap();
+                            <#instance as Evals>::combine(a, b, &f)
+                        })
+                    };
+                }
+            }
+        })
+        .collect();
+
     parse_quote! {
         fn combine<A, B, C, M>(a: &Self::Mles<A>, b: &Self::Mles<B>, f: M) -> Self::Mles<C>
         where
@@ -102,7 +145,12 @@ pub fn impl_combine(_fields: &[(Ident, Type)], _var: &TypeParam, _name: &Ident) 
             B: Clone + Debug,
             C: Clone + Debug,
             M: Fn(&A, &B) -> C
-        {todo!()}
+        {
+            #(#fields)*
+            #name {
+                #(#constructor_fields),*
+            }
+        }
     }
 }
 
