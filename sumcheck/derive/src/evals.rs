@@ -16,7 +16,7 @@ pub fn impl_map(fields: &[(Ident, Type)], var: &TypeParam, name: &Ident) -> Trai
             }
             Case::VarArray(len) => {
                 parse_quote! {
-                    let #ident: [_, #len] = &evals.#ident.each_ref().map(|elem| f(elem));
+                    let #ident: [B; #len] = evals.#ident.each_ref().map(f);
                 }
             }
             Case::TypeArray(_ty, _var) => {

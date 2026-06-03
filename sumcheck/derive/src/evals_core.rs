@@ -1,18 +1,30 @@
-use crate::is_var;
+use crate::Case;
 use syn::{Ident, Stmt, TraitItemFn, Type, TypeParam, parse_quote};
 
 pub fn impl_combine(fields: &[(Ident, Type)], var: &TypeParam) -> TraitItemFn {
     let constructor_fields: Vec<Ident> = fields.iter().map(|(ident, _)| ident.clone()).collect();
-    let fields: Vec<Stmt> = fields
-        .iter()
-        .map(|(ident, ty)| {
-            if is_var(ty, var) {
+    let fields: Vec<Stmt> = Case::process(fields, var)
+        .into_iter()
+        .map(|(ident, ty)| match ty {
+            Case::Var => {
                 parse_quote! {
-                    let #ident: #ty = f(&self.#ident, &other.#ident);
+                    let #ident: #var = f(&self.#ident, &other.#ident);
                 }
-            } else {
-                unimplemented!()
             }
+            Case::Type(ty) => {
+                parse_quote! {
+                    let #ident: #ty = &self.#ident.combine(&other.#ident, f);
+                }
+            }
+            Case::VarArray(len) => {
+                parse_quote! {
+                    let #ident: [#var; #len] = {
+                        let mut other = other.#ident.iter();
+                        self.#ident.each_ref().map(|a| f(a, other.next().unwrap()))
+                    };
+                }
+            }
+            Case::TypeArray(_, _expr) => todo!(),
         })
         .collect();
     parse_quote! {
@@ -26,16 +38,21 @@ pub fn impl_combine(fields: &[(Ident, Type)], var: &TypeParam) -> TraitItemFn {
 }
 
 pub fn impl_flatten(fields: &[(Ident, Type)], var: &TypeParam) -> TraitItemFn {
-    let fields: Vec<Stmt> = fields
+    let fields: Vec<Stmt> = Case::process(fields, var)
         .iter()
-        .map(|(ident, ty)| {
-            if is_var(ty, var) {
+        .map(|(ident, ty)| match ty {
+            Case::Var => {
                 parse_quote! {
                     vec.push(self.#ident);
                 }
-            } else {
-                unimplemented!()
             }
+            Case::Type(_) => todo!(),
+            Case::VarArray(_len) => {
+                parse_quote! {
+                    vec.extend(self.#ident);
+                }
+            }
+            Case::TypeArray(_, _len) => todo!(),
         })
         .collect();
     parse_quote! {
@@ -47,16 +64,25 @@ pub fn impl_flatten(fields: &[(Ident, Type)], var: &TypeParam) -> TraitItemFn {
 
 pub fn impl_unflatten(fields: &[(Ident, Type)], var: &TypeParam) -> TraitItemFn {
     let constructor_fields: Vec<Ident> = fields.iter().map(|(ident, _)| ident.clone()).collect();
+    let fields = Case::process(fields, var);
     let fields: Vec<Stmt> = fields
         .iter()
-        .map(|(ident, ty)| {
-            if is_var(ty, var) {
+        .map(|(ident, ty)| match ty {
+            Case::Var => {
                 parse_quote! {
-                    let #ident: #ty = elems.next().unwrap();
+                    let #ident: #var = elems.next().unwrap();
                 }
-            } else {
-                unimplemented!()
             }
+            Case::Type(_) => todo!(),
+            Case::VarArray(len) => {
+                parse_quote! {
+                    let #ident: [#var; #len] = {
+                        let #ident: Vec<#var> = elems.by_ref().take(#len).collect();
+                        #ident.try_into().unwrap()
+                    };
+                }
+            }
+            Case::TypeArray(_, _len) => todo!(),
         })
         .collect();
     parse_quote! {
