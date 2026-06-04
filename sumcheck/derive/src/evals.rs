@@ -1,6 +1,6 @@
 use crate::Case;
 use syn::{
-    GenericArgument, Ident, PathArguments, PathSegment, Stmt, TraitItemFn, Type, TypeParam,
+    Expr, GenericArgument, Ident, PathArguments, PathSegment, Stmt, TraitItemFn, Type, TypeParam,
     parse_quote,
 };
 
@@ -98,7 +98,7 @@ pub fn impl_combine(fields: &[(Ident, Type)], var: &TypeParam, name: &Ident) -> 
     let constructor_fields: Vec<Ident> = fields.iter().map(|(ident, _)| ident.clone()).collect();
     let generic_c: Type = parse_quote!(C);
     let unit: Type = parse_quote!(());
-    //
+
     let fields: Vec<Stmt> = Case::process(fields, var)
         .into_iter()
         .map(|(ident, ty)| match ty {
@@ -250,7 +250,61 @@ pub fn impl_combine_mut(fields: &[(Ident, Type)], var: &TypeParam) -> TraitItemF
     }
 }
 
-pub fn impl_combine3(_fields: &[(Ident, Type)], _var: &TypeParam, _name: &Ident) -> TraitItemFn {
+pub fn impl_combine3(fields: &[(Ident, Type)], var: &TypeParam, name: &Ident) -> TraitItemFn {
+    let generic_c: Type = parse_quote!(C);
+    let unit: Type = parse_quote!(());
+    let constructor_fields: Vec<Ident> = fields.iter().map(|(ident, _)| ident.clone()).collect();
+    let fields: Vec<Stmt> = Case::process(fields, var)
+        .into_iter()
+        .map(|(ident, ty)| {
+            let a0: Expr = parse_quote!(&a[0].#ident);
+            let a1: Expr = parse_quote!(&a[1].#ident);
+            let b: Expr = parse_quote!(&b.#ident);
+            match ty {
+                Case::Var => {
+                    parse_quote! {
+                        let #ident: C = f(#a0, #a1, #b);
+                    }
+                }
+                Case::Type(ty) => {
+                    let instance = substitute(&ty, &var.ident, &unit);
+                    let ty = substitute(&ty, &var.ident, &generic_c);
+                    parse_quote! {
+                        let #ident: #ty = <#instance>::combine3([#a0,#a1],#b, &f);
+                    }
+                }
+                Case::VarArray(len) => {
+                    parse_quote! {
+                        let #ident: [C; #len] = {
+                            let mut a0 = (#a0).iter();
+                            let mut a1 = (#a1).iter();
+                            (#b).each_ref().map(|b|{
+                                let a0 = a0.next().unwrap();
+                                let a1 = a1.next().unwrap();
+                                f(a0, a1, b)
+                            })
+                        };
+                    }
+                }
+                Case::TypeArray(ty, len) => {
+                    let instance = substitute(&ty, &var.ident, &unit);
+                    let ty = substitute(&ty, &var.ident, &generic_c);
+
+                    parse_quote! {
+                        let #ident: [#ty; #len] = {
+                            let mut a0 = (#a0).iter();
+                            let mut a1 = (#a1).iter();
+                            (#b).each_ref().map(|b|{
+                                let a0 = a0.next().unwrap();
+                                let a1 = a1.next().unwrap();
+                                <#instance>::combine3([a0, a1], b, &f)
+                            })
+                        };
+                    }
+                }
+            }
+        })
+        .collect();
     parse_quote! {
         fn combine3<A, B, C, M>(a: [&Self::Mles<A>; 2], b: &Self::Mles<B>, f: M) -> Self::Mles<C>
         where
@@ -258,6 +312,11 @@ pub fn impl_combine3(_fields: &[(Ident, Type)], _var: &TypeParam, _name: &Ident)
             B: Clone + Debug,
             C: Clone + Debug,
             M: Fn(&A, &A, &B) -> C
-        {todo!()}
+        {
+            #(#fields)*
+            #name {
+                #(#constructor_fields),*
+            }
+        }
     }
 }
