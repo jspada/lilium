@@ -199,7 +199,41 @@ pub fn impl_apply(fields: &[(Ident, Type)], var: &TypeParam) -> TraitItemFn {
     }
 }
 
-pub fn impl_combine_mut(_fields: &[(Ident, Type)], _var: &TypeParam, _name: &Ident) -> TraitItemFn {
+pub fn impl_combine_mut(fields: &[(Ident, Type)], var: &TypeParam) -> TraitItemFn {
+    let unit: Type = parse_quote!(());
+    let fields: Vec<Stmt> = Case::process(fields, var)
+        .into_iter()
+        .map(|(ident, ty)| match ty {
+            Case::Var => {
+                parse_quote! {
+                    f(&mut a.#ident, &b.#ident, c.#ident);
+                }
+            }
+            Case::Type(ty) => {
+                let instance = substitute(&ty, &var.ident, &unit);
+                parse_quote! {
+                    <#instance as Evals>::combine_mut_conditional(
+                        &mut a.#ident, &b.#ident, c.#ident, &f
+                    );
+                }
+            }
+            Case::VarArray(_) => {
+                parse_quote! {
+                    for ((a,b),c) in a.#ident.iter_mut().zip(&b.#ident).zip(c.#ident){
+                        f(a,b,c);
+                    }
+                }
+            }
+            Case::TypeArray(ty, _) => {
+                let instance = substitute(&ty, &var.ident, &unit);
+                parse_quote! {
+                    for ((a,b),c) in a.#ident.iter_mut().zip(&b.#ident).zip(c.#ident){
+                        <#instance>::combine_mut_conditional(a,b,c,&f);
+                    }
+                }
+            }
+        })
+        .collect();
     parse_quote! {
         fn combine_mut_conditional<A, B, M>(
             a: &mut Self::Mles<A>,
@@ -210,7 +244,9 @@ pub fn impl_combine_mut(_fields: &[(Ident, Type)], _var: &TypeParam, _name: &Ide
             A: Clone + Debug,
             B: Clone + Debug,
             M: Fn(&mut A, &B, bool)
-        {todo!()}
+        {
+            #(#fields)*
+        }
     }
 }
 
