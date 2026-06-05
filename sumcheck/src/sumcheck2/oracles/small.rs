@@ -62,8 +62,6 @@ impl From<SmallNature> for EvalLocation {
 }
 
 impl<F: Field, SF: SumcheckFunction<F>> Oracle<F> for SmallEvalOracle<F, SF> {
-    type Evals<V: Clone + Debug> = SF::Mles<V>;
-
     type Function = SF;
 
     type Instance = ();
@@ -72,7 +70,7 @@ impl<F: Field, SF: SumcheckFunction<F>> Oracle<F> for SmallEvalOracle<F, SF> {
 
     type Nature = SmallNature;
 
-    fn structure(&self) -> Rc<Vec<Self::Evals<F>>> {
+    fn structure(&self) -> Rc<Vec<SF::Mles<F>>> {
         self.evals_over_domain.clone()
     }
 
@@ -86,17 +84,17 @@ impl<F: Field, SF: SumcheckFunction<F>> Oracle<F> for SmallEvalOracle<F, SF> {
 
     fn oracle_params(&self) -> <Self::Instance as Message<F>>::Params {}
 
-    fn eval(&self, point: &MultiPoint<F>, _instance: &(), _witness: &()) -> Self::Evals<F> {
+    fn eval(&self, point: &MultiPoint<F>, _instance: &(), _witness: &()) -> SF::Mles<F> {
         SF::map_evals(&self.evals, |f| f(point))
     }
 
-    fn witness_from_evals(_evals: &[Self::Evals<F>]) -> Self::Witness {}
+    fn witness_from_evals(_evals: &[SF::Mles<F>]) -> Self::Witness {}
 
-    fn instance_evals(_instance: &()) -> Self::Evals<F> {
+    fn instance_evals(_instance: &()) -> SF::Mles<F> {
         SF::map_evals(&SF::natures(), |_| F::ZERO)
     }
 
-    fn natures(&self) -> Self::Evals<Self::Nature> {
+    fn natures(&self) -> SF::Mles<Self::Nature> {
         // We just take some random available value of type Self::Evals.
         let evals = &self.evals_over_domain[0];
         SF::map_evals(evals, |_| SmallNature)

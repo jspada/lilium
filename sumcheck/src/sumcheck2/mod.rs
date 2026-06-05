@@ -20,7 +20,8 @@ pub mod degree {
 
     use crate::{
         sumcheck::Var,
-        sumcheck2::oracles::{EvalLocation, Mles, Oracle, SumcheckFunction},
+        sumcheck2::evals::{Evals, Mles},
+        sumcheck2::oracles::{EvalLocation, Oracle, SumcheckFunction},
     };
     use ark_ff::Field;
 
@@ -114,24 +115,22 @@ pub mod degree {
     impl<F: Field> Var<F> for Degree {}
 
     pub fn sumcheck_degree<F: Field, O: Oracle<F>>(oracle: &O) -> usize {
-        let natures = oracle.natures();
-        let natures: Mles<F, O, O::Nature> = natures.into();
+        let natures: Mles<O::Function, O::Nature> = oracle.natures();
 
-        let intitial_degrees =
-            <O::Function as SumcheckFunction<F>>::map_evals(&natures, |nature: &O::Nature| {
-                let location: EvalLocation = (*nature).into();
-                //NOTE: This may not always be true in sumcheck, and it ceirtainly is not
-                // in sumfold.
-                // This function is only to be used by sumcheck, for now it will be assumed
-                // that instance evals are always 0, and the rest always 1. But at some
-                // point it may be better to use some trait for the natures instead of just
-                // Into<EvalLocation>.
-                match location {
-                    EvalLocation::Structure => Degree(1),
-                    EvalLocation::Instance => Degree(0),
-                    EvalLocation::Witness => Degree(1),
-                }
-            });
+        let intitial_degrees = <O::Function as Evals>::map_evals(&natures, |nature: &O::Nature| {
+            let location: EvalLocation = (*nature).into();
+            //NOTE: This may not always be true in sumcheck, and it ceirtainly is not
+            // in sumfold.
+            // This function is only to be used by sumcheck, for now it will be assumed
+            // that instance evals are always 0, and the rest always 1. But at some
+            // point it may be better to use some trait for the natures instead of just
+            // Into<EvalLocation>.
+            match location {
+                EvalLocation::Structure => Degree(1),
+                EvalLocation::Instance => Degree(0),
+                EvalLocation::Witness => Degree(1),
+            }
+        });
 
         let degree: Degree = oracle.function().function(&intitial_degrees);
         degree.0

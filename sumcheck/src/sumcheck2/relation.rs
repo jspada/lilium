@@ -1,21 +1,22 @@
-use crate::sumcheck2::oracles::{EvalLocation, Mles, Oracle, SumcheckFunction};
+use crate::sumcheck2::{
+    evals::{Evals, Mles},
+    oracles::{EvalLocation, Oracle, SumcheckFunction},
+};
 use ark_ff::Field;
 use std::marker::PhantomData;
 use transcript::reduction2::{Message, Relation};
 
 fn merge<F: Field, O: Oracle<F>>(
-    structure: &O::Evals<F>,
-    instance: &O::Evals<F>,
-    witness: &O::Evals<F>,
-    locations: &O::Evals<EvalLocation>,
-) -> O::Evals<F> {
+    structure: &Mles<O::Function, F>,
+    instance: &Mles<O::Function, F>,
+    witness: &Mles<O::Function, F>,
+    locations: &Mles<O::Function, EvalLocation>,
+) -> Mles<O::Function, F> {
     use EvalLocation::*;
 
-    let locations: Mles<F, O, EvalLocation> = locations.clone().into();
-
-    let evals: O::Evals<F> = <O::Function as SumcheckFunction<F>>::combine3(
+    let evals: Mles<O::Function, F> = <O::Function as Evals>::combine3(
         [structure, instance],
-        &locations,
+        locations,
         |s: &F, i, l: &EvalLocation| match l {
             Structure => *s,
             Instance => *i,
@@ -23,9 +24,9 @@ fn merge<F: Field, O: Oracle<F>>(
         },
     );
 
-    <O::Function as SumcheckFunction<F>>::combine3(
+    <O::Function as Evals>::combine3(
         [&evals, witness],
-        &locations,
+        locations,
         |e: &F, w, l: &EvalLocation| match l {
             Structure | Instance => *e,
             Witness => *w,
@@ -67,19 +68,16 @@ impl<F: Field, O: Oracle<F>> Relation for SumcheckRelation<F, O> {
 
     type Instance = SumcheckInstance<F, O>;
 
-    type Witness = Vec<O::Evals<F>>;
+    type Witness = Vec<Mles<O::Function, F>>;
 
     fn check(
         structure: &Self::Structure,
         instance: &Self::Instance,
         witness: &Self::Witness,
     ) -> bool {
-        let locations: Mles<F, O, O::Nature> = structure.natures().into();
-        let locations: Mles<F, O, EvalLocation> =
-            <O::Function as SumcheckFunction<F>>::map_evals(&locations, |n: &O::Nature| {
-                (*n).into()
-            });
-        let locations: O::Evals<EvalLocation> = From::from(locations);
+        let locations: Mles<O::Function, O::Nature> = structure.natures();
+        let locations: Mles<O::Function, EvalLocation> =
+            <O::Function as Evals>::map_evals(&locations, |n: &O::Nature| (*n).into());
 
         let mle = structure.structure();
         // Creating such a thing shouldn't be allowed, thus it will

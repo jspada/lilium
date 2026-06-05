@@ -3,6 +3,7 @@ use crate::{
     polynomials::MultiPoint,
     sumcheck2::{
         degree,
+        evals::Mles,
         oracles::{Oracle, QueryRelation},
         prove, OracleQueryInstance, SumcheckInstance, SumcheckMessage, SumcheckRelation,
     },
@@ -152,7 +153,7 @@ impl<F: Field, O: Oracle<F>> Reduction<F, SumcheckRelation<F, O>, QueryRelation<
     fn prove<S: Duplex<F>>(
         key: &Self::ProverKey,
         instance: SumcheckInstance<F, O>,
-        witness: Vec<O::Evals<F>>,
+        witness: Vec<Mles<O::Function, F>>,
         transcript: &mut Transcript<F, S>,
     ) -> ProverOutput<QueryRelation<F, O>, Self::Proof> {
         let oracle_witness = O::witness_from_evals(&witness);

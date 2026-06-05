@@ -1,8 +1,8 @@
 use crate::{
     polynomials::MultiPoint,
     sumcheck2::{
+        evals::{EvalsCore, EvalsExt},
         oracles::{
-            function::{Evals, EvalsExt},
             partial::{
                 OracleEval, OracleParams, PartialOracle, PartialQueryInstance, PartialQueryRelation,
             },
@@ -112,8 +112,6 @@ where
     P1: PartialOracle<F, SF>,
     P2: PartialOracle<F, SF>,
 {
-    type Evals<V: Clone + Debug> = SF::Mles<V>;
-
     type Function = SF;
 
     type Instance = CompositeOracleInstance<F, SF, P1, P2>;
@@ -122,7 +120,7 @@ where
 
     type Nature = Either<P1::Nature, P2::Nature>;
 
-    fn instance_evals(instance: &Self::Instance) -> Self::Evals<F> {
+    fn instance_evals(instance: &Self::Instance) -> SF::Mles<F> {
         let natures = SF::natures().flatten_vec();
         let evals_oracle1 = P1::instance_evals(&instance.oracle1_instance).flatten_vec();
         assert_eq!(natures.len(), evals_oracle1.len());
@@ -142,7 +140,7 @@ where
         SF::Mles::unflatten_vec(evals)
     }
 
-    fn structure(&self) -> Rc<Vec<Self::Evals<F>>> {
+    fn structure(&self) -> Rc<Vec<SF::Mles<F>>> {
         Rc::clone(&self.mles)
     }
 
@@ -163,7 +161,7 @@ where
         point: &MultiPoint<F>,
         instance: &Self::Instance,
         witness: &Self::Witness,
-    ) -> Self::Evals<F> {
+    ) -> SF::Mles<F> {
         let natures = SF::natures();
         let instance_evals = <Self as Oracle<F>>::instance_evals(instance);
         // TODO: Evaluate only what's needed of each.
@@ -202,11 +200,11 @@ where
         )
     }
 
-    fn witness_from_evals(evals: &[Self::Evals<F>]) -> Self::Witness {
+    fn witness_from_evals(evals: &[SF::Mles<F>]) -> Self::Witness {
         evals.to_vec()
     }
 
-    fn natures(&self) -> Self::Evals<Self::Nature> {
+    fn natures(&self) -> SF::Mles<Self::Nature> {
         SF::natures()
     }
 }
@@ -529,7 +527,7 @@ where
 
     type QueryRelation = CompositeQueryRelation<F, SF, P1, P2>;
 
-    fn instance_evals(instance: &Self::Instance) -> <SF as SumcheckFunction<F>>::Mles<F> {
+    fn instance_evals(instance: &Self::Instance) -> SF::Mles<F> {
         let evals1 = P1::instance_evals(&instance.oracle1_instance);
         let evals2 = P2::instance_evals(&instance.oracle2_instance);
         evals1.combine(&evals2, |e1, e2| *e1 + e2)
@@ -539,7 +537,7 @@ where
         key: &Self::VerifierKey,
         instance: &Self::Instance,
         point: &MultiPoint<F>,
-    ) -> <SF as SumcheckFunction<F>>::Mles<OracleEval<F>> {
+    ) -> SF::Mles<OracleEval<F>> {
         use OracleEval::*;
         let evals1 = P1::evals(&key.oracle1_key, &instance.oracle1_instance, point);
         let evals2 = P2::evals(&key.oracle2_key, &instance.oracle2_instance, point);

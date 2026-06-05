@@ -1,10 +1,12 @@
 use crate::{
     polynomials::MultiPoint,
-    sumcheck2::oracles::{
-        composite::Either,
-        function::Evals,
-        partial::{OracleEval, OracleParams, PartialOracle, PartialQueryInstance},
-        EvalLocation, SumcheckFunction,
+    sumcheck2::{
+        evals::EvalsCore,
+        oracles::{
+            composite::Either,
+            partial::{OracleEval, OracleParams, PartialOracle, PartialQueryInstance},
+            EvalLocation, SumcheckFunction,
+        },
     },
 };
 use ark_ff::Field;
@@ -184,7 +186,7 @@ where
 
     type QueryRelation = CoreQueryRelation<F, SF>;
 
-    fn instance_evals(instance: &Self::Instance) -> <SF as SumcheckFunction<F>>::Mles<F> {
+    fn instance_evals(instance: &Self::Instance) -> SF::Mles<F> {
         let natures = SF::natures();
         let mut coefficients = instance.elements.iter();
 
@@ -212,7 +214,7 @@ where
         key: &Self::VerifierKey,
         instance: &Self::Instance,
         point: &MultiPoint<F>,
-    ) -> <SF as SumcheckFunction<F>>::Mles<OracleEval<F>> {
+    ) -> SF::Mles<OracleEval<F>> {
         let coeffs = decode::<F, SF>(instance.elements.clone());
         let functions = &key.functions;
         SF::combine(functions, &coeffs, |function, coeff| {

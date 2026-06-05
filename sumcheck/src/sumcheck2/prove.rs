@@ -2,7 +2,8 @@ use crate::{
     polynomials::MultiPoint,
     sumcheck2::{
         degree,
-        oracles::{EvalLocation, Mles, Oracle, SumcheckFunction},
+        evals::{Evals, Mles},
+        oracles::{EvalLocation, Oracle, SumcheckFunction},
         SumcheckMessage,
     },
 };
@@ -14,10 +15,10 @@ use transcript::reduction2::Transcript;
 pub struct ProverKey<F: Field, O: Oracle<F>> {
     degree: usize,
     vars: usize,
-    structure_evals: Rc<Vec<O::Evals<F>>>,
+    structure_evals: Rc<Vec<Mles<O::Function, F>>>,
     f: O::Function,
-    structure_filter: Mles<F, O, bool>,
-    instance_filter: Mles<F, O, bool>,
+    structure_filter: Mles<O::Function, bool>,
+    instance_filter: Mles<O::Function, bool>,
 }
 
 impl<F: Field, O: Oracle<F>> ProverKey<F, O> {
@@ -30,19 +31,16 @@ impl<F: Field, O: Oracle<F>> ProverKey<F, O> {
         let f = oracle.function().clone();
 
         let natures = oracle.natures();
-        let natures = natures.into();
 
-        let structure_filter =
-            <O::Function as SumcheckFunction<F>>::map_evals(&natures, |nature: &O::Nature| {
-                let location: EvalLocation = (*nature).into();
-                matches!(location, EvalLocation::Structure)
-            });
+        let structure_filter = <O::Function as Evals>::map_evals(&natures, |nature: &O::Nature| {
+            let location: EvalLocation = (*nature).into();
+            matches!(location, EvalLocation::Structure)
+        });
 
-        let instance_filter =
-            <O::Function as SumcheckFunction<F>>::map_evals(&natures, |nature: &O::Nature| {
-                let location: EvalLocation = (*nature).into();
-                matches!(location, EvalLocation::Instance)
-            });
+        let instance_filter = <O::Function as Evals>::map_evals(&natures, |nature: &O::Nature| {
+            let location: EvalLocation = (*nature).into();
+            matches!(location, EvalLocation::Instance)
+        });
 
         Self {
             degree,
@@ -57,11 +55,11 @@ impl<F: Field, O: Oracle<F>> ProverKey<F, O> {
     /// Merges evals from the structure, instance and witness.
     fn merge_evals(
         &self,
-        witness: &mut O::Evals<F>,
-        structure: &O::Evals<F>,
-        instance: &O::Evals<F>,
+        witness: &mut Mles<O::Function, F>,
+        structure: &Mles<O::Function, F>,
+        instance: &Mles<O::Function, F>,
     ) {
-        <O::Function as SumcheckFunction<F>>::combine_mut_conditional(
+        <O::Function as Evals>::combine_mut_conditional(
             witness,
             structure,
             self.structure_filter.clone(),
@@ -72,7 +70,7 @@ impl<F: Field, O: Oracle<F>> ProverKey<F, O> {
             },
         );
 
-        <O::Function as SumcheckFunction<F>>::combine_mut_conditional(
+        <O::Function as Evals>::combine_mut_conditional(
             witness,
             instance,
             self.instance_filter.clone(),
@@ -86,9 +84,9 @@ impl<F: Field, O: Oracle<F>> ProverKey<F, O> {
 
     pub(crate) fn prove<S: Duplex<F>>(
         &self,
-        witness: Vec<O::Evals<F>>,
+        witness: Vec<Mles<O::Function, F>>,
         transcript: &mut Transcript<F, S>,
-        instance_evals: O::Evals<F>,
+        instance_evals: Mles<O::Function, F>,
     ) -> (Vec<SumcheckMessage<F>>, MultiPoint<F>, F) {
         let mut witness = self.prepare_witness(witness, instance_evals);
         let mut vars = vec![];
@@ -116,9 +114,9 @@ impl<F: Field, O: Oracle<F>> ProverKey<F, O> {
     /// Adds witness and structure evals to the witness.
     fn prepare_witness(
         &self,
-        mut witness: Vec<O::Evals<F>>,
-        instance_evals: O::Evals<F>,
-    ) -> Vec<O::Evals<F>> {
+        mut witness: Vec<Mles<O::Function, F>>,
+        instance_evals: Mles<O::Function, F>,
+    ) -> Vec<Mles<O::Function, F>> {
         for (witness, structure) in witness.iter_mut().zip(self.structure_evals.as_ref()) {
             self.merge_evals(witness, structure, &instance_evals);
         }
@@ -126,7 +124,7 @@ impl<F: Field, O: Oracle<F>> ProverKey<F, O> {
     }
 
     /// Computes the round's sumcheck message.
-    fn message(&self, mles: &[O::Evals<F>]) -> SumcheckMessage<F> {
+    fn message(&self, mles: &[Mles<O::Function, F>]) -> SumcheckMessage<F> {
         assert!(mles.len().is_power_of_two());
 
         let degree = self.degree;
@@ -152,22 +150,18 @@ impl<F: Field, O: Oracle<F>> ProverKey<F, O> {
         let mut message = vec![F::zero(); degree + 1];
         for (left, right) in left.iter().zip(right) {
             // The last evaluations, and what is needed to compute the next.
-            let mut e = <O::Function as SumcheckFunction<F>>::combine::<F, F, _, _>(
-                left,
-                right,
-                |e0, e1| {
-                    let coeff = *e1 - e0;
-                    let last_eval = e0;
-                    (*last_eval, coeff)
-                },
-            );
+            let mut e = <O::Function as Evals>::combine::<F, F, _, _>(left, right, |e0, e1| {
+                let coeff = *e1 - e0;
+                let last_eval = e0;
+                (*last_eval, coeff)
+            });
 
             for m in message.iter_mut() {
-                let evals = <O::Function as SumcheckFunction<F>>::map_evals(&e, |(eval, _)| *eval);
+                let evals = <O::Function as Evals>::map_evals(&e, |(eval, _)| *eval);
                 let eval: F = self.f.function(&evals);
 
                 *m += eval;
-                <O::Function as SumcheckFunction<F>>::apply(&mut e, |(last, coeff)| {
+                <O::Function as Evals>::apply(&mut e, |(last, coeff)| {
                     *last += coeff;
                 });
             }
@@ -176,17 +170,15 @@ impl<F: Field, O: Oracle<F>> ProverKey<F, O> {
         SumcheckMessage(message)
     }
 
-    fn bind_variable(&self, mles: &mut Vec<O::Evals<F>>, var: F) {
+    fn bind_variable(&self, mles: &mut Vec<Mles<O::Function, F>>, var: F) {
         assert!(mles.len().is_power_of_two());
         let len = mles.len();
         let (left, right) = mles.split_at_mut(len / 2);
 
         for (left, right) in left.iter_mut().zip(right) {
-            *left = <O::Function as SumcheckFunction<F>>::combine::<F, F, F, _>(
-                left,
-                right,
-                |e0, e1| *e0 + var * (*e1 - e0),
-            );
+            *left = <O::Function as Evals>::combine::<F, F, F, _>(left, right, |e0, e1| {
+                *e0 + var * (*e1 - e0)
+            });
         }
 
         mles.truncate(len / 2);

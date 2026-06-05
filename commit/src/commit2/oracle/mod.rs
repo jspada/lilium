@@ -4,9 +4,12 @@ use sponge::sponge::Duplex;
 use std::{convert::identity, marker::PhantomData, rc::Rc};
 use sumcheck::{
     polynomials::MultiPoint,
-    sumcheck2::oracles::{
-        partial::{merge, OracleEval, OracleParams, PartialOracle, PartialQueryInstance},
-        EvalLocation, Evals, EvalsExt, SumcheckFunction,
+    sumcheck2::{
+        evals::{EvalsCore, EvalsExt},
+        oracles::{
+            partial::{merge, OracleEval, OracleParams, PartialOracle, PartialQueryInstance},
+            EvalLocation, SumcheckFunction,
+        },
     },
 };
 use transcript::reduction2::{

@@ -1,4 +1,4 @@
-use crate::polynomials::MultiPoint;
+use crate::{polynomials::MultiPoint, sumcheck2::evals::Mles};
 use ark_ff::Field;
 use std::{fmt::Debug, marker::PhantomData, rc::Rc};
 use transcript::reduction2::{Message, Relation};
@@ -10,7 +10,7 @@ mod function;
 pub mod partial;
 pub mod small;
 
-pub use function::{Evals, EvalsExt, SumcheckFunction};
+pub use function::SumcheckFunction;
 
 #[derive(Clone, Debug)]
 /// An instance in the QueryRelation, made up of an instance of
@@ -121,8 +121,7 @@ pub trait Oracle<F: Field>: 'static + Clone + Debug
 where
     <Self::Instance as Message<F>>::Error: Clone,
 {
-    type Evals<V: Clone + Debug>: Evals<V> + From<Mles<F, Self, V>> + Into<Mles<F, Self, V>>;
-    type Function: SumcheckFunction<F, Mles<F> = Self::Evals<F>>;
+    type Function: SumcheckFunction<F>;
     type Instance: Message<F> + Clone;
     type Witness;
 
@@ -135,8 +134,8 @@ where
     type Nature: Into<EvalLocation> + Copy + Debug;
 
     // many of these things would be better in the key than in the oracle.
-    fn instance_evals(instance: &Self::Instance) -> Self::Evals<F>;
-    fn structure(&self) -> Rc<Vec<Self::Evals<F>>>;
+    fn instance_evals(instance: &Self::Instance) -> Mles<Self::Function, F>;
+    fn structure(&self) -> Rc<Vec<Mles<Self::Function, F>>>;
     fn function(&self) -> &Self::Function;
     fn vars(&self) -> usize;
     fn oracle_params(&self) -> <Self::Instance as Message<F>>::Params;
@@ -145,9 +144,7 @@ where
         point: &MultiPoint<F>,
         instance: &Self::Instance,
         witness: &Self::Witness,
-    ) -> Self::Evals<F>;
-    fn witness_from_evals(evals: &[Self::Evals<F>]) -> Self::Witness;
-    fn natures(&self) -> Self::Evals<Self::Nature>;
+    ) -> Mles<Self::Function, F>;
+    fn witness_from_evals(evals: &[Mles<Self::Function, F>]) -> Self::Witness;
+    fn natures(&self) -> Mles<Self::Function, Self::Nature>;
 }
-
-pub type Mles<F, O, V> = <<O as Oracle<F>>::Function as SumcheckFunction<F>>::Mles<V>;

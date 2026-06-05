@@ -41,6 +41,8 @@ pub trait Evals: Debug + Clone + 'static {
         M: Fn(&A, &A, &B) -> C;
 }
 
+pub type Mles<E, V> = <E as Evals>::Mles<V>;
+
 pub trait EvalsCore<V: Clone + Debug>: Sized + Clone + Debug {
     /// should combine 2 [Self] into one by using `f` to combine each element
     fn combine<C: Fn(&V, &V) -> V>(&self, other: &Self, f: C) -> Self;
