@@ -1,7 +1,8 @@
 use evals_core::{impl_combine, impl_flatten, impl_unflatten};
 use quote::quote;
 use syn::{
-    Data, DeriveInput, Expr, Fields, GenericParam, Ident, Type, TypeParam, parse_macro_input,
+    Data, DeriveInput, Expr, Fields, GenericParam, Generics, Ident, ItemImpl, Type, TypeParam,
+    parse_macro_input, parse_quote, punctuated::Punctuated, token::Comma,
 };
 
 mod evals;
@@ -54,15 +55,29 @@ pub fn derive_evals(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let combine_mut = evals::impl_combine_mut(&fields, &var);
     let combine3 = evals::impl_combine3(&fields, &var, &name);
 
-    let tokens = quote! {
+    let evals_core: ItemImpl = parse_quote! {
         impl #impl_generics EvalsCore<#var> for #name #ty_generics #clause {
             #combine
             #flatten
             #unflatten
         }
+    };
 
-        impl Evals for #name<()> #clause {
-            type Mles<V: Clone + Debug> = #name<V>;
+    let generics = check_generics(&generics);
+    let (impl_generics, _, clause) = generics.split_for_impl();
+    let ty_generics: Punctuated<Ident, Comma> = generics
+        .params
+        .iter()
+        .map(|generic| match generic {
+            GenericParam::Lifetime(_) => unreachable!(),
+            GenericParam::Type(type_param) => type_param.ident.clone(),
+            GenericParam::Const(const_param) => const_param.ident.clone(),
+        })
+        .collect();
+
+    let evals: ItemImpl = parse_quote! {
+        impl #impl_generics Evals for #name<(), #ty_generics> #clause {
+            type Mles<V: Clone + Debug> = #name<V, #ty_generics>;
 
             #map_evals
             #evals_combine
@@ -71,7 +86,37 @@ pub fn derive_evals(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             #combine3
         }
     };
+
+    let tokens = quote! {
+        #evals_core
+
+        #evals
+    };
+
     proc_macro::TokenStream::from(tokens)
+}
+
+/// Enforces valid form of type and removes the first generic.
+fn check_generics(generics: &Generics) -> Generics {
+    let mut generic_seen = false;
+    for generic in generics.params.iter() {
+        match generic {
+            GenericParam::Lifetime(_) => {
+                panic!("lifetimes not allowed");
+            }
+            GenericParam::Type(_) => {
+                generic_seen = true;
+            }
+            GenericParam::Const(_) => {
+                if !generic_seen {
+                    panic!("first generic must be a type");
+                }
+            }
+        }
+    }
+    let mut generics = generics.clone();
+    generics.params = generics.params.clone().into_iter().skip(1).collect();
+    generics
 }
 
 fn is_var(ty: &Type, var: &TypeParam) -> bool {
