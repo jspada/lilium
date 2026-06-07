@@ -4,6 +4,7 @@ use sumcheck::{eq, polynomials::MultiPoint};
 use transcript::reduction2::Relation;
 
 // const BYTE: usize = 256;
+pub mod sumcheck_argument;
 
 #[derive(Clone, Debug)]
 pub struct SparseMle<F, const N: usize> {
