@@ -28,11 +28,41 @@ pub enum Coeffs {
     OnePerVariable,
 }
 
-type Func<F> = fn(&[F], &MultiPoint<F>) -> F;
+pub type Func<F> = fn(&[F], &MultiPoint<F>) -> F;
 
 #[derive(Clone, Debug)]
 pub struct CoreOracle<F: Field, SF: SumcheckFunction<F>> {
     functions: SF::Mles<Func<F>>,
+}
+
+impl<F: Field, SF: SumcheckFunction<F>> CoreOracle<F, SF>
+where
+    SF::Natures: Into<Option<CoreNature>>,
+{
+    pub fn new(functions: SF::Mles<Option<Func<F>>>) -> Self {
+        use CoreNature::*;
+        let natures = SF::natures();
+        let zero: Func<F> = |_, _| F::ZERO;
+        let chall: Func<F> = |c, _| c[0];
+        let functions: SF::Mles<Func<F>> = SF::combine(&natures, &functions, |nature, func| {
+            let nature: Option<CoreNature> = (*nature).into();
+            match (nature, func) {
+                (None, None) => zero,
+                (None, Some(_)) => {
+                    panic!("Small function provided when non was expected for this nature");
+                }
+                (Some(Challenge), None) => chall,
+                (Some(SmallStructure | SmallInstance(_)), None) => {
+                    panic!("Missing expected small function");
+                }
+                (Some(SmallStructure | SmallInstance(_)), Some(f)) => *f,
+                (Some(Challenge), Some(_)) => {
+                    panic!("Challenges are handled automatically, no function should be provided");
+                }
+            }
+        });
+        Self { functions }
+    }
 }
 
 #[derive(Clone, Debug)]
