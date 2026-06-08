@@ -3,19 +3,34 @@ use commit::commit2::oracle::CommittedNature;
 use std::fmt::Debug;
 use std::vec::IntoIter;
 use sumcheck::{
+    polynomials::MultiPoint,
     sumcheck::Var,
     sumcheck2::{
         evals::{Evals, EvalsCore},
-        oracles::{composite::Either, core::CoreNature, SumcheckFunction},
+        oracles::{
+            composite::Either,
+            core::{CoreNature, Func},
+            SumcheckFunction,
+        },
     },
 };
 use sumcheck_derive::EvalsCore;
 
-#[derive(Clone, Debug, EvalsCore)]
+#[derive(Clone, Copy, Debug, EvalsCore)]
 pub struct DimensionEvals<V: Clone + Debug = ()> {
     address: V,
     eq_lookup: V,
     inverse: V,
+}
+
+impl<V: Clone + Debug> DimensionEvals<V> {
+    pub fn new(address: V, eq_lookup: V, inverse: V) -> Self {
+        Self {
+            address,
+            eq_lookup,
+            inverse,
+        }
+    }
 }
 
 #[derive(Clone, Debug, EvalsCore)]
@@ -26,7 +41,28 @@ pub struct SparkEvals<V: Clone + Debug, const N: usize> {
     challenges: SparkChallenges<V>,
 }
 
-#[derive(Clone, Debug, EvalsCore)]
+impl<F: Field, const N: usize> SparkEvals<Option<Func<F>>, N> {
+    pub fn small_functions() -> Self {
+        let dimensions = [DimensionEvals::<Option<Func<F>>>::new(None, None, None); N];
+        let value = None;
+        let zerocheck: Func<F> = |chall: &[F], point: &MultiPoint<F>| {
+            assert_eq!(chall.len(), point.vars());
+            let chall = MultiPoint::new(chall.to_vec());
+            chall.eval_as_eq(point)
+        };
+        let zerocheck = Some(zerocheck);
+        let challenges = SparkChallenges::default();
+
+        Self {
+            dimensions,
+            value,
+            zerocheck,
+            challenges,
+        }
+    }
+}
+
+#[derive(Clone, Debug, EvalsCore, Default)]
 pub struct SparkChallenges<V: Clone + Debug> {
     combination: V,
     compression: V,

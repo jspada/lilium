@@ -56,18 +56,37 @@ where
     }
 }
 
-fn oracle<F, C, const N: usize>() -> Oracle<F, C, SparkEvals<(), N>>
+fn oracle<F, C, const N: usize>(mles: &SparseMle<F, N>, pcs: C) -> Oracle<F, C, SparkEvals<(), N>>
 where
     F: Field,
     C: CommmitmentScheme<F>,
 {
+    // let f = SparkEvals::map_evals(&SparkEvals::natures(), |_| ());
+
+    let builder1: CoreOracle<F, SparkEvals<(), N>> = {
+        let functions = SparkEvals::small_functions();
+        CoreOracle::new(functions)
+    };
+
+    let builder2 = { pcs };
+
+    let mles = Rc::new(structure(mles));
+
+    let _ = (builder1, builder2, mles);
+
+    // can't be done yet due to missing From implementation.
+    // CompositeOracle::new(f, mles, builder1, builder2)
+    todo!()
+}
+
+fn structure<F: Field, const N: usize>(_mles: &SparseMle<F, N>) -> Vec<SparkEvals<F, N>> {
     todo!()
 }
 
 impl<F: Field, C: CommmitmentScheme<F>, const N: usize> CommittedSparkStructure<F, C, N> {
-    pub fn new(mle: Rc<SparseMle<F, N>>) -> Self {
+    pub fn new(mle: Rc<SparseMle<F, N>>, pcs: C) -> Self {
         let minor_structure = MinorStructure::new(&mle);
-        let oracle = oracle();
+        let oracle = oracle(&mle, pcs);
         Self {
             oracle,
             minor_structure,
