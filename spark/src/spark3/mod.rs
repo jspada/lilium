@@ -3,8 +3,12 @@ use std::{marker::PhantomData, rc::Rc};
 use sumcheck::{eq, polynomials::MultiPoint};
 use transcript::reduction2::Relation;
 
-// const BYTE: usize = 256;
+mod committed;
 pub mod sumcheck_argument;
+
+pub use committed::CommittedSparkRelation;
+
+const BYTE: usize = 256;
 
 #[derive(Clone, Debug)]
 pub struct SparseMle<F, const N: usize> {
