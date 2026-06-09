@@ -30,7 +30,7 @@ pub enum Coeffs {
 
 pub type Func<F> = fn(&[F], &MultiPoint<F>) -> F;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CoreOracle<F: Field, SF: SumcheckFunction<F>> {
     functions: SF::Mles<Func<F>>,
 }

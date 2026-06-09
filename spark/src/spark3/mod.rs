@@ -10,7 +10,7 @@ pub use committed::CommittedSparkRelation;
 
 const BYTE: usize = 256;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SparseMle<F, const N: usize> {
     /// Addresses in u8 segments.
     addresses: Vec<[u8; N]>,

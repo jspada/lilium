@@ -10,7 +10,7 @@ use transcript::reduction2::Relation;
 
 pub struct CommittedSparkRelation<F, C, const N: usize>(PhantomData<(F, C)>);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MinorStructure<const N: usize> {
     pub counts: [Box<[usize; BYTE]>; N],
 }
@@ -33,6 +33,7 @@ impl<const N: usize> MinorStructure<N> {
 
 type Oracle<F, C, SF> = CompositeOracle<F, SF, CoreOracle<F, SF>, CommittedOracle<F, C, SF>>;
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CommittedSparkStructure<F: Field, C: CommitmentScheme<F>, const N: usize> {
     pub oracle: Oracle<F, C, SparkEvals<(), N>>,
     pub minor_structure: MinorStructure<N>,

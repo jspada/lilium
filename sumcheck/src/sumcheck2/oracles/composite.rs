@@ -39,7 +39,7 @@ where
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CompositeOracle<F, SF, P1, P2>
 where
     F: Field,

@@ -20,7 +20,7 @@ use transcript::reduction2::{
 };
 
 /// An oracle based on a commitment scheme.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CommittedOracle<F: Field, C, SF: SumcheckFunction<F>> {
     // f: SF,
     structure_evals: Rc<Vec<SF::Mles<F>>>,

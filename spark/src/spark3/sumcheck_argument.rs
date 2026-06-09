@@ -16,7 +16,7 @@ use sumcheck::{
 };
 use sumcheck_derive::EvalsCore;
 
-#[derive(Clone, Copy, Debug, EvalsCore)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, EvalsCore)]
 pub struct DimensionEvals<V: Clone + Debug = ()> {
     address: V,
     eq_lookup: V,
@@ -33,7 +33,7 @@ impl<V: Clone + Debug> DimensionEvals<V> {
     }
 }
 
-#[derive(Clone, Debug, EvalsCore)]
+#[derive(Clone, Debug, PartialEq, Eq, EvalsCore)]
 pub struct SparkEvals<V: Clone + Debug, const N: usize> {
     dimensions: [DimensionEvals<V>; N],
     value: V,
@@ -94,7 +94,7 @@ impl<F: Field, const N: usize> SparkEvals<F, N> {
     }
 }
 
-#[derive(Clone, Debug, EvalsCore, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, EvalsCore, Default)]
 pub struct SparkChallenges<V: Clone + Debug> {
     combination: V,
     compression: V,
