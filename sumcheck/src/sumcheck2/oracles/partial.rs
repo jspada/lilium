@@ -65,12 +65,6 @@ pub trait Nature: Copy + Debug + 'static {
     fn into_dynamic(self) -> DynamicNature {
         DynamicNature(Box::new(self))
     }
-
-    /// Try to downcast from a parent nature T, of which Self
-    /// is a subset of.
-    fn from<T: Nature>(x: T) -> Option<Self> {
-        x.into_dynamic().into()
-    }
 }
 
 impl<A: Nature, B: Nature> Nature for Either<A, B> {
