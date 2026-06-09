@@ -37,7 +37,7 @@ pub struct CoreOracle<F: Field, SF: SumcheckFunction<F>> {
 
 impl<F: Field, SF: SumcheckFunction<F>> CoreOracle<F, SF>
 where
-    SF::Natures: Into<Option<CoreNature>>,
+    SF::Natures: Nature,
 {
     pub fn new(functions: SF::Mles<Option<Func<F>>>) -> Self {
         use CoreNature::*;
@@ -45,7 +45,7 @@ where
         let zero: Func<F> = |_, _| F::ZERO;
         let chall: Func<F> = |c, _| c[0];
         let functions: SF::Mles<Func<F>> = SF::combine(&natures, &functions, |nature, func| {
-            let nature: Option<CoreNature> = (*nature).into();
+            let nature: Option<CoreNature> = nature.into_dynamic().into();
             match (nature, func) {
                 (None, None) => zero,
                 (None, Some(_)) => {
@@ -78,7 +78,7 @@ fn decode<F, SF>(coefficients: Vec<Vec<F>>) -> SF::Mles<Option<Vec<F>>>
 where
     F: Field,
     SF: SumcheckFunction<F>,
-    Option<CoreNature>: From<SF::Natures>,
+    SF::Natures: Nature,
 {
     let natures = SF::natures();
     let mut coefficients = coefficients.into_iter();
@@ -87,7 +87,8 @@ where
         .flatten_vec()
         .into_iter()
         .map(|nature| {
-            Option::from(nature).map(|nature| match nature {
+            let nature: Option<CoreNature> = nature.into_dynamic().into();
+            nature.map(|nature| match nature {
                 CoreNature::SmallStructure => vec![],
                 CoreNature::SmallInstance(n) => {
                     let coeff = coefficients.next().unwrap();
@@ -118,7 +119,7 @@ impl<F, SF> Message<F> for CoreOracleInstance<F, SF>
 where
     F: Field,
     SF: SumcheckFunction<F>,
-    Option<CoreNature>: From<SF::Natures>,
+    SF::Natures: Nature,
 {
     type Params = OracleParams;
 
@@ -128,7 +129,8 @@ where
         let natures = SF::natures().flatten_vec();
         let mut len = 0;
         for nature in natures {
-            let eval_len = match Option::<CoreNature>::from(nature) {
+            let nature: Option<CoreNature> = nature.into_dynamic().into();
+            let eval_len = match nature {
                 Some(CoreNature::SmallStructure) => 0,
                 Some(CoreNature::SmallInstance(coeffs)) => coeffs,
                 Some(CoreNature::Challenge) => 1,
@@ -146,7 +148,8 @@ where
         let mut coefficients = self.elements.iter();
 
         for nature in natures {
-            match Option::<CoreNature>::from(nature) {
+            let nature: Option<CoreNature> = nature.into_dynamic().into();
+            match nature {
                 Some(CoreNature::SmallInstance(coeffs)) => {
                     let expected = coeffs;
                     if let Some(coeffs) = coefficients.next() {
@@ -208,7 +211,7 @@ impl<A> From<Either<CoreNature, A>> for Option<CoreNature> {
 
 impl<F: Field, SF: SumcheckFunction<F>> PartialOracle<F, SF> for CoreOracle<F, SF>
 where
-    Option<CoreNature>: From<SF::Natures>,
+    SF::Natures: Nature,
 {
     type Instance = CoreOracleInstance<F, SF>;
 
@@ -230,7 +233,8 @@ where
         let mut coefficients = instance.elements.iter();
 
         let evals = natures.flatten_vec().into_iter().map(|nature| {
-            if let Some(nature) = Option::from(nature) {
+            let nature: Option<CoreNature> = nature.into_dynamic().into();
+            if let Some(nature) = nature {
                 match nature {
                     CoreNature::SmallInstance(n) => {
                         let coeffs = coefficients.next().unwrap();
@@ -276,7 +280,7 @@ impl<F, SF> Relation for CoreQueryRelation<F, SF>
 where
     F: Field,
     SF: SumcheckFunction<F>,
-    Option<CoreNature>: From<SF::Natures>,
+    SF::Natures: Nature,
 {
     type Structure = CoreOracle<F, SF>;
 
@@ -321,7 +325,7 @@ impl<F, SF> Reduction<F, CoreQueryRelation<F, SF>, ()> for CoreOracle<F, SF>
 where
     F: Field,
     SF: SumcheckFunction<F>,
-    Option<CoreNature>: From<SF::Natures>,
+    SF::Natures: Nature,
 {
     type ProverKey = Self;
 
@@ -383,6 +387,6 @@ impl<F, SF> Argument<F, CoreQueryRelation<F, SF>> for CoreOracle<F, SF>
 where
     F: Field,
     SF: SumcheckFunction<F>,
-    Option<CoreNature>: From<SF::Natures>,
+    SF::Natures: Nature,
 {
 }
