@@ -2,12 +2,16 @@ use crate::spark3::{
     sumcheck_argument::SparkEvals, SparkInstance, SparseMle, StaticSparkRelation,
     StaticSparkStructure, BYTE,
 };
-use ark_ff::Field;
+use ark_ff::{batch_inversion, Field};
 use commit::commit2::{oracle::CommittedOracle, CommitmentScheme};
 use std::{marker::PhantomData, rc::Rc};
-use sumcheck::sumcheck2::{
-    evals::Evals,
-    oracles::{composite::CompositeOracle, core::CoreOracle, SumcheckFunction},
+use sumcheck::{
+    eq,
+    polynomials::MultiPoint,
+    sumcheck2::{
+        evals::Evals,
+        oracles::{composite::CompositeOracle, core::CoreOracle, SumcheckFunction},
+    },
 };
 use transcript::reduction2::Relation;
 
@@ -32,13 +36,47 @@ impl<const N: usize> MinorStructure<N> {
 
         Self { counts }
     }
+
+    /// Computes the sums at the left of the equation, thanks to restricting the
+    /// lookup table to 8 bits it can be done in about 256 operations.
+    pub(crate) fn expected_sums<F: Field>(
+        &self,
+        point: &[MultiPoint<F>; N],
+        lookup_challenge: F,
+        compression_challenge: F,
+    ) -> [F; N] {
+        let mut res = [F::zero(); N];
+
+        #[allow(clippy::needless_range_loop)]
+        for i in 0..N {
+            let point = &point[i];
+            let counts = &self.counts[i];
+            let mut denominators = eq::eq(point);
+            for (i, e) in denominators.iter_mut().enumerate() {
+                let address = F::from(i as u8);
+                *e = address * compression_challenge + *e + lookup_challenge;
+            }
+            batch_inversion(&mut denominators);
+            let inverses = denominators;
+            res[i] = inverses
+                .into_iter()
+                .zip(counts.iter())
+                .fold(F::zero(), |acc, e| {
+                    let (inverse, count) = e;
+                    let count = F::from(*count as u64);
+                    acc + inverse * count
+                });
+        }
+        res
+    }
 }
 
-type Oracle<F, C, SF> = CompositeOracle<F, SF, CoreOracle<F, SF>, CommittedOracle<F, C, SF>>;
+pub type Oracle<F, C, SF> = CompositeOracle<F, SF, CoreOracle<F, SF>, CommittedOracle<F, C, SF>>;
+pub type SparkOracle<F, C, const N: usize> = Oracle<F, C, SparkEvals<(), N>>;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CommittedSparkStructure<F: Field, C: CommitmentScheme<F>, const N: usize> {
-    oracle: Oracle<F, C, SparkEvals<(), N>>,
+    oracle: SparkOracle<F, C, N>,
     minor_structure: MinorStructure<N>,
     mle: Rc<SparseMle<F, N>>,
     pcs: C,
@@ -76,7 +114,7 @@ where
     }
 }
 
-fn oracle<F, C, const N: usize>(mles: &SparseMle<F, N>, pcs: C) -> Oracle<F, C, SparkEvals<(), N>>
+fn oracle<F, C, const N: usize>(mles: &SparseMle<F, N>, pcs: C) -> SparkOracle<F, C, N>
 where
     F: Field,
     C: CommitmentScheme<F>,
