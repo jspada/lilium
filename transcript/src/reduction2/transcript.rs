@@ -166,6 +166,24 @@ where
         self.unwrap_guard(Guard::new(message), params)
     }
 
+    /// Send challenge multivariate point.
+    pub fn point(&mut self) -> Vec<F> {
+        let round = match self.rounds.next() {
+            Some(round) => round,
+            None => {
+                panic!("Unexpected Message");
+            }
+        };
+        let id = TypeId::of::<PointRound>();
+        assert_eq!(
+            round.id, id,
+            "Requesting a point was not expected at this round"
+        );
+        // Shouldn't fail as the length was checked.
+        let challenges = (0..round.challenges).map(|_| self.sponge.squeeze().unwrap());
+        challenges.into_iter().collect()
+    }
+
     /// Like [Self::receive_message], but when you already have the message
     /// under some [Guard].
     pub fn unwrap_guard<M: Message<F>, const N: usize>(
