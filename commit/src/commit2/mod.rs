@@ -10,7 +10,7 @@ mod relation;
 
 pub use relation::{OpenInstance, OpeningRelation};
 
-pub trait CommitmentSchemeCore<F: Field>: Clone + Debug + 'static {
+pub trait CommitmentSchemeCore<F: Field>: Clone + Debug + Eq + 'static {
     type Commitment: for<'a> Add<&'a Self::Commitment, Output = Self::Commitment>
         + Add<Output = Self::Commitment>
         + Mul<F, Output = Self::Commitment>
