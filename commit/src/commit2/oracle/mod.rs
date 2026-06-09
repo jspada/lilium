@@ -59,15 +59,17 @@ pub struct CommittedOracleInstance<F: Field, C: CommitmentScheme<F>, SF> {
     _sf: PhantomData<SF>,
 }
 
-fn witness_commits<F: Field, SF: SumcheckFunction<F>>() -> usize
+fn witness_commits<F, SF>() -> usize
 where
-    Option<CommittedNature>: From<SF::Natures>,
+    F: Field,
+    SF: SumcheckFunction<F>,
+    SF::Natures: Nature,
 {
     SF::natures()
         .flatten_vec()
         .into_iter()
         .map(|nature| {
-            if let Some(CommittedNature::Witness) = Option::from(nature) {
+            if let Some(CommittedNature::Witness) = nature.into_dynamic().into() {
                 1
             } else {
                 0
@@ -81,7 +83,7 @@ where
     F: Field,
     C: CommitmentScheme<F>,
     SF: SumcheckFunction<F>,
-    Option<CommittedNature>: From<SF::Natures>,
+    SF::Natures: Nature,
 {
     type Params = OracleParams;
 
@@ -150,11 +152,12 @@ where
     F: Field,
     C: CommitmentScheme<F>,
     SF: SumcheckFunction<F>,
-    Option<CommittedNature>: From<SF::Natures>,
+    SF::Natures: Nature,
 {
     fn from(value: CommittedOracle<F, C, SF>) -> Self {
         let condition = SF::map_evals(&SF::natures(), |nature| {
-            matches!(Option::from(*nature), Some(CommittedNature::Structure))
+            let nature: Option<CommittedNature> = nature.into_dynamic().into();
+            matches!(nature, Some(CommittedNature::Structure))
         });
 
         let structure_commits =
@@ -173,8 +176,7 @@ where
     F: Field,
     C: CommitmentScheme<F>,
     SF: SumcheckFunction<F>,
-    Option<CommittedNature>: From<SF::Natures>,
-    SF::Natures: Into<EvalLocation>,
+    SF::Natures: Into<EvalLocation> + Nature,
 {
     type Instance = CommittedOracleInstance<F, C, SF>;
 
@@ -220,9 +222,7 @@ where
     F: Field,
     C: CommitmentScheme<F>,
     SF: SumcheckFunction<F>,
-    Option<CommittedNature>: From<SF::Natures>,
-    SF::Natures: Copy,
-    SF::Natures: Into<EvalLocation>,
+    SF::Natures: Nature + Into<EvalLocation>,
 {
     type Structure = CommittedOracle<F, C, SF>;
 
@@ -249,7 +249,8 @@ where
             .flatten_vec()
             .iter()
             .map(|nature| {
-                if let Some(CommittedNature::Witness) = Option::from(*nature) {
+                let nature: Option<CommittedNature> = nature.into_dynamic().into();
+                if let Some(CommittedNature::Witness) = nature {
                     Some(expected_commits.next().unwrap())
                 } else {
                     None
@@ -270,7 +271,8 @@ where
             .collect();
 
         let filter = SF::map_evals(&SF::natures(), |nature| {
-            matches!(Option::from(*nature), Some(CommittedNature::Witness))
+            let nature: Option<CommittedNature> = nature.into_dynamic().into();
+            matches!(nature, Some(CommittedNature::Witness))
         });
         let commits = commit_filtered::<F, SF, C>(&evals, &structure.scheme, filter);
 
@@ -310,7 +312,7 @@ where
     F: Field,
     C: CommitmentScheme<F>,
     SF: SumcheckFunction<F>,
-    Option<CommittedNature>: From<SF::Natures>,
+    SF::Natures: Nature,
 {
     let eval = instance
         .evals()
@@ -324,7 +326,8 @@ where
         .flatten_vec()
         .into_iter()
         .filter_map(|nature| {
-            Option::from(nature).map(|nature| match nature {
+            let nature: Option<CommittedNature> = nature.into_dynamic().into();
+            nature.map(|nature| match nature {
                 CommittedNature::Structure => structure_commits.next().unwrap(),
                 CommittedNature::Witness => instance_commits.next().unwrap(),
             })
@@ -356,9 +359,7 @@ where
     F: Field,
     C: CommitmentScheme<F>,
     SF: SumcheckFunction<F>,
-    Option<CommittedNature>: From<SF::Natures>,
-    SF::Natures: Copy,
-    SF::Natures: Into<EvalLocation>,
+    SF::Natures: Nature + Into<EvalLocation>,
 {
     type ProverKey = ProverKey<F, SF, C>;
 
@@ -377,7 +378,8 @@ where
 
     fn verifier_key(oracle: &Self, _: &C) -> Self::VerifierKey {
         let structure_filter = SF::map_evals(&SF::natures(), |nature| {
-            matches!(Option::from(*nature), Some(CommittedNature::Structure))
+            let nature: Option<CommittedNature> = nature.into_dynamic().into();
+            matches!(nature, Some(CommittedNature::Structure))
         });
         let commits =
             commit_filtered::<F, SF, C>(&oracle.structure_evals, &oracle.scheme, structure_filter);
