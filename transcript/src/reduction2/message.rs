@@ -54,3 +54,21 @@ impl<F> Message<F> for () {
         Ok(vec![])
     }
 }
+
+impl<F, T: Message<F>, const N: usize> Message<F> for [T; N] {
+    type Params = T::Params;
+
+    type Error = T::Error;
+
+    fn len(params: &Self::Params) -> usize {
+        T::len(params) * N
+    }
+
+    fn to_field_elements(&self, params: &Self::Params) -> Result<Vec<F>, Self::Error> {
+        let elems: Result<Vec<Vec<F>>, Self::Error> = self
+            .iter()
+            .map(|elem| elem.to_field_elements(params))
+            .collect();
+        Ok(elems?.into_iter().flatten().collect())
+    }
+}
