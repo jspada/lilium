@@ -15,6 +15,14 @@ impl<P> GuardedProof<P> {
     }
 }
 
+impl GuardedProof<()> {
+    /// Creates an empty proof for protocols without prover
+    /// messages.
+    pub fn empty() -> Self {
+        Self(())
+    }
+}
+
 impl<A, B> GuardedProof<(A, B)> {
     pub(crate) fn split(self) -> (GuardedProof<A>, GuardedProof<B>) {
         let GuardedProof((a, b)) = self;
