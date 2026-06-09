@@ -7,7 +7,7 @@ mod reduction;
 mod relation;
 
 pub use oracles::OracleQueryInstance;
-pub use reduction::SumcheckReduction;
+pub use reduction::{SumcheckReduction, SumcheckVerifierKey};
 pub use relation::{SumcheckInstance, SumcheckRelation};
 
 #[derive(Clone, Debug)]
