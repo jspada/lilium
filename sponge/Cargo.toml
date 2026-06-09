@@ -8,7 +8,11 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 ark-ff = { version = "0.4", default-features = false }
-automata = { workspace = true } 
+automata = { workspace = true }
+
+[dev-dependencies]
+ark-vesta = "0.4"
+seq-macro = "0.3"
 
 [lib]
 bench = false
