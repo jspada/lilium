@@ -4,9 +4,11 @@ use sumcheck::{eq, polynomials::MultiPoint};
 use transcript::reduction2::Relation;
 
 mod committed;
+mod reduction;
 pub mod sumcheck_argument;
 
 pub use committed::CommittedSparkRelation;
+pub use reduction::SparkReduction;
 
 const BYTE: usize = 256;
 
