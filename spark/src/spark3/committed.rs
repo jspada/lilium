@@ -1,4 +1,7 @@
-use crate::spark3::{sumcheck_argument::SparkEvals, SparkInstance, SparseMle, BYTE};
+use crate::spark3::{
+    sumcheck_argument::SparkEvals, SparkInstance, SparseMle, StaticSparkRelation,
+    StaticSparkStructure, BYTE,
+};
 use ark_ff::Field;
 use commit::commit2::{oracle::CommittedOracle, CommitmentScheme};
 use std::{marker::PhantomData, rc::Rc};
@@ -35,9 +38,10 @@ type Oracle<F, C, SF> = CompositeOracle<F, SF, CoreOracle<F, SF>, CommittedOracl
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CommittedSparkStructure<F: Field, C: CommitmentScheme<F>, const N: usize> {
-    pub oracle: Oracle<F, C, SparkEvals<(), N>>,
-    pub minor_structure: MinorStructure<N>,
-    pub mle: Rc<SparseMle<F, N>>,
+    oracle: Oracle<F, C, SparkEvals<(), N>>,
+    minor_structure: MinorStructure<N>,
+    mle: Rc<SparseMle<F, N>>,
+    pcs: C,
 }
 
 impl<F, C, const N: usize> Relation for CommittedSparkRelation<F, C, N>
@@ -52,11 +56,23 @@ where
     type Witness = ();
 
     fn check(
-        _structure: &Self::Structure,
-        _instance: &Self::Instance,
-        _witness: &Self::Witness,
+        structure: &Self::Structure,
+        instance: &Self::Instance,
+        witness: &Self::Witness,
     ) -> bool {
-        todo!()
+        let static_spark = StaticSparkStructure {
+            mle: Rc::clone(&structure.mle),
+        };
+        if !StaticSparkRelation::check(&static_spark, instance, witness) {
+            return false;
+        }
+        let minor_structure = MinorStructure::new(&structure.mle);
+        if minor_structure != structure.minor_structure {
+            return false;
+        }
+
+        let oracle = oracle(&structure.mle, structure.pcs.clone());
+        oracle == structure.oracle
     }
 }
 
@@ -83,11 +99,12 @@ where
 impl<F: Field, C: CommitmentScheme<F>, const N: usize> CommittedSparkStructure<F, C, N> {
     pub fn new(mle: Rc<SparseMle<F, N>>, pcs: C) -> Self {
         let minor_structure = MinorStructure::new(&mle);
-        let oracle = oracle(&mle, pcs);
+        let oracle = oracle(&mle, pcs.clone());
         Self {
             oracle,
             minor_structure,
             mle,
+            pcs,
         }
     }
 }
