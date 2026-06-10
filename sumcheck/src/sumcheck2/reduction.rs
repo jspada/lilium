@@ -66,6 +66,12 @@ pub struct SumcheckVerifierKey<F: Field> {
     weights: BarycentricWeights<F>,
 }
 
+impl<F: Field> SumcheckVerifierKey<F> {
+    pub fn vars(&self) -> usize {
+        self.vars
+    }
+}
+
 impl<F: Field, O: Oracle<F>> Reduction<F, SumcheckRelation<F, O>, QueryRelation<F, O>>
     for SumcheckReduction<F, O>
 {
