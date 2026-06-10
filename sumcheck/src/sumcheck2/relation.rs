@@ -44,6 +44,15 @@ pub struct SumcheckInstance<F: Field, O: Oracle<F>> {
     pub(crate) oracle_instance: O::Instance,
 }
 
+impl<F: Field, O: Oracle<F>> SumcheckInstance<F, O> {
+    pub fn new(sum: F, oracle_instance: O::Instance) -> Self {
+        Self {
+            sum,
+            oracle_instance,
+        }
+    }
+}
+
 impl<F: Field, O: Oracle<F>> Message<F> for SumcheckInstance<F, O> {
     type Params = <O::Instance as Message<F>>::Params;
 
