@@ -106,6 +106,22 @@ impl<F: Field, const N: usize> SparkEvals<F, N> {
     }
 }
 
+impl<F: Field, const N: usize> SparkEvals<Vec<F>, N> {
+    /// Sets the coefficients expected for the instance of CoreOracle.
+    pub fn oracle_instance(
+        challenges: &SparkChallenges<F>,
+        zerocheck_point: MultiPoint<F>,
+    ) -> Self {
+        let challenges = SparkChallenges::map_evals(challenges, |c| vec![*c]);
+        let zerocheck = zerocheck_point.inner();
+        SparkEvals {
+            zerocheck,
+            challenges,
+            ..Default::default()
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, EvalsCore, Default)]
 pub struct SparkChallenges<V: Clone + Debug> {
     combination: V,
