@@ -81,10 +81,20 @@ where
     type Error = ();
 
     fn transcript_pattern(
-        _key: &Self::VerifierKey,
-        _builder: TranscriptBuilder,
+        key: &Self::VerifierKey,
+        builder: TranscriptBuilder,
     ) -> TranscriptBuilder {
-        todo!()
+        let vars = key.sumcheck_key.vars();
+        builder
+            .round::<F, [C::Commitment; N], 2>(&())
+            .point::<F>(vars)
+            .round::<F, [C::Commitment; N], 1>(&())
+            .subprotocol::<SumcheckReduction<F, SparkOracle<F, C, N>>, _, _, _>(&key.sumcheck_key)
+            .subprotocol::<CompositeOracle<F, SparkEvals<(), N>, _, _>, _, _, _>(&key.oracle_key)
+            .subprotocol::<CoreOracle<F, SparkEvals<(), N>>, _, _, _>(key.oracle_key.p1_key())
+            .subprotocol::<CommittedOracle<F, C, SparkEvals<(), N>>, F, _, _>(
+                key.oracle_key.p2_key(),
+            )
     }
 
     fn verifier_key(
