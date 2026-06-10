@@ -7,6 +7,7 @@ use sumcheck::{
     sumcheck2::{
         evals::{EvalsCore, EvalsExt},
         oracles::{
+            composite::CompositeOracleInstance,
             partial::{
                 merge, Nature, OracleEval, OracleParams, PartialOracle, PartialQueryInstance,
             },
@@ -57,6 +58,43 @@ pub trait CommittedFunction<F: Field>: SumcheckFunction<F> {
 pub struct CommittedOracleInstance<F: Field, C: CommitmentScheme<F>, SF> {
     commitments: Vec<C::Commitment>,
     _sf: PhantomData<SF>,
+}
+
+impl<F, C, SF> CommittedOracleInstance<F, C, SF>
+where
+    F: Field,
+    C: CommitmentScheme<F>,
+    SF: SumcheckFunction<F>,
+    SF::Natures: Nature,
+{
+    /// Will panic if a None is provided when the corresponding nature
+    /// is CommittedNature::Witness, or if Some(_) is provided in any other
+    /// case.
+    pub fn new(commits: SF::Mles<Option<C::Commitment>>) -> Self {
+        use CommittedNature::*;
+        let natures = SF::natures();
+        let commits = SF::combine(&commits, &natures, |commit, nature| {
+            let nature: Option<CommittedNature> = nature.into_dynamic().into();
+            match (commit, nature) {
+                (None, None) => None,
+                (None, Some(nature)) => match nature {
+                    Structure => None,
+                    Witness => {
+                        panic!("Missing commitment when one was expected");
+                    }
+                },
+                (Some(_), None | Some(Structure)) => {
+                    panic!("commitment provided when none was expected");
+                }
+                (Some(commit), Some(Witness)) => Some(commit.clone()),
+            }
+        });
+        let commitments = commits.flatten_vec().into_iter().flatten().collect();
+        CommittedOracleInstance {
+            commitments,
+            _sf: PhantomData,
+        }
+    }
 }
 
 fn witness_commits<F, SF>() -> usize
