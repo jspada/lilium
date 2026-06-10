@@ -7,7 +7,6 @@ use sumcheck::{
     sumcheck2::{
         evals::{EvalsCore, EvalsExt},
         oracles::{
-            composite::CompositeOracleInstance,
             partial::{
                 merge, Nature, OracleEval, OracleParams, PartialOracle, PartialQueryInstance,
             },
