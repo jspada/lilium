@@ -140,6 +140,16 @@ impl SparkChallenges<Either<CoreNature, CommittedNature>> {
     }
 }
 
+impl<V: Clone + Debug> SparkChallenges<V> {
+    pub fn new(combination: V, compression: V, lookup: V) -> Self {
+        Self {
+            combination,
+            compression,
+            lookup,
+        }
+    }
+}
+
 impl<F: Field, const N: usize> SumcheckFunction<F> for SparkEvals<(), N> {
     type Natures = Either<CoreNature, CommittedNature>;
 
