@@ -78,7 +78,6 @@ impl TranscriptBuilder {
     where
         F: Field,
         R1: Relation,
-        R1::Instance: Message<F>,
         R2: Relation,
         R: Reduction<F, R1, R2>,
     {
