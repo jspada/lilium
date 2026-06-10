@@ -72,6 +72,52 @@ pub struct CoreOracleInstance<F, SF> {
     _f: PhantomData<SF>,
 }
 
+impl<F, SF> CoreOracleInstance<F, SF>
+where
+    F: Field,
+    SF: SumcheckFunction<F>,
+    SF::Natures: Nature,
+{
+    /// For CoreNature::SmallInstance(n), vec![_,n] must be provided.
+    /// For CoreNature::Challenge, vec![chall] must be provided.
+    /// For every other nature, and empty vec should be used, any
+    /// other cases will result in panic.
+    pub fn new(coefficients: &SF::Mles<Vec<F>>) -> Self {
+        use CoreNature::*;
+        let natures = SF::natures();
+        let coefficients = SF::combine(coefficients, &natures, |coeffs, nature| {
+            let nature: Option<CoreNature> = nature.into_dynamic().into();
+            match nature {
+                Some(SmallInstance(n)) => {
+                    assert_eq!(coeffs.len(), n, "unexpected number of coefficients");
+                    Some(coeffs.to_vec())
+                }
+                Some(Challenge) => {
+                    assert_eq!(
+                        coeffs.len(),
+                        1,
+                        "other than 1 element provided for challenge"
+                    );
+                    Some(vec![coeffs[0]])
+                }
+                Some(SmallStructure) | None => {
+                    assert!(
+                        coeffs.is_empty(),
+                        "no elements should be provided for this nature"
+                    );
+                    None
+                }
+            }
+        });
+        let elements = coefficients.flatten_vec().into_iter().flatten().collect();
+
+        Self {
+            elements,
+            _f: PhantomData,
+        }
+    }
+}
+
 /// Unpacks the vector of coefficients into SF::Mles acording to SF::natures().
 /// CoreNature::SmallStructure will get an empty vec![].
 fn decode<F, SF>(coefficients: Vec<Vec<F>>) -> SF::Mles<Option<Vec<F>>>
