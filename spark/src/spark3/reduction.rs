@@ -87,8 +87,9 @@ where
         let vars = key.sumcheck_key.vars();
         builder
             .round::<F, [C::Commitment; N], 2>(&())
+            .round::<F, [C::Commitment; N], 0>(&())
             .point::<F>(vars)
-            .round::<F, [C::Commitment; N], 1>(&())
+            .round::<F, (), 1>(&())
             .subprotocol::<SumcheckReduction<F, SparkOracle<F, C, N>>, _, _, _>(&key.sumcheck_key)
             .subprotocol::<CompositeOracle<F, SparkEvals<(), N>, _, _>, _, _, _>(&key.oracle_key)
             .subprotocol::<CoreOracle<F, SparkEvals<(), N>>, _, _, _>(key.oracle_key.p1_key())
@@ -134,12 +135,15 @@ where
         let lookup_chall = c1;
         let compression_chall = c2;
 
-        let zerocheck_point = MultiPoint::new(transcript.point());
-
         // SECOND ROUND: Sending commitments to the inverses of the indexed lookups.
         // Another challenge is received to combine the multiple sumchecks into 1.
-        let Ok((inverse_commitments, [c3])) =
+        let Ok((inverse_commitments, [])) =
             transcript.receive_message(|proof| proof.inverse_commitments.clone(), &proof, &());
+
+        let zerocheck_point = MultiPoint::new(transcript.point());
+
+        let Ok(((), [c3])) = transcript.receive_message(|_| (), &proof, &());
+
         let combination_chall = c3;
 
         let SparkInstance { point, eval } = instance;
