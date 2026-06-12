@@ -28,14 +28,14 @@ For example this circuit:
 $$x - 3 = 0$$
 
 If you $$x = 3$$, then you can prove it without revealing the value of x.
-The/a witness can be said to be 3.  
+The/a witness can be said to be 3.
 
-But this:  
+But this:
 
 $$x^2 + 1 = 0$$
 
 There is not possible witness, and you can not know something which
-doesn't exits.  
+doesn't exits.
 What about this? It should have some solution:
 
 $$x^6 - 1 + x^5 = 0$$
@@ -448,12 +448,63 @@ the commitment scheme used.
 
 ## Benchmarks
 
-This section will talk about benchmarks when I have time to run them properly.
-They can be found in `lilium/benches/runtime` and run like:
+The benchmarks are found in `lilium/benches` and come in two suites: execution-time
+benchmarks (`exectime`) and peak-memory benchmarks (`memory`). Both are built with
+Criterion, so the usual Criterion CLI options and HTML reports work.
 
-> cargo bench --bench runtime
+To run all of the benchmarks just run
 
-And the report should appear in `target/criterion`.
+```
+cargo bench
+```
+
+To run only the execution time benchmarks run
+
+```
+cargo bench Time
+```
+
+or
+
+```
+cargo bench --bench exectime
+```
+
+To run only the memory benchmarks run
+
+```
+cargo bench Memory
+```
+
+or
+
+```
+cargo bench --bench memory
+```
+
+The memory benchmarks report the peak heap allocated during the measured operation itself,
+relative to a baseline taken after setup. The circuit key and SRS are excluded, and have
+their own groups (Setup Memory, SRS Memory).
+
+The HTML report is written to `target/criterion` and you can serve it locally with
+
+```
+python3 -m http.server 8000 --directory target/criterion
+```
+
+and then point your browser to `http://localhost:8000/report/index.html`
+
+You can save a baseline for comparison with
+
+```
+cargo bench -- --save-baseline foo
+```
+
+and you can compare against it with
+
+```
+cargo bench -- --baseline foo
+```
 
 ### Single-threaded
 
