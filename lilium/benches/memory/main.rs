@@ -24,7 +24,7 @@ type Sponge = sponge::sponge::Sponge<Fr, Permutation, 1, 2, 3>;
 #[global_allocator]
 static ALLOCATOR: PeakTrackingAllocator = PeakTrackingAllocator;
 
-fn proving(c: &mut Criterion<PeakMemory>) {
+fn proving_memory(c: &mut Criterion<PeakMemory>) {
     let mut group = c.benchmark_group("Proving Memory");
     group.sampling_mode(SamplingMode::Flat);
     let mut rng = StdRng::seed_from_u64(0);
@@ -56,6 +56,39 @@ where
     );
 }
 
+fn verify<const N: usize>(group: &mut BenchmarkGroup<'_, PeakMemory>, rng: &mut impl Rng)
+where
+    Fr: Field,
+    Scheme: CommmitmentScheme<Fr>,
+    Sponge: Duplex<Fr>,
+{
+    let profile = <HashChain<N> as BuildStructure<Fr, 1, 1, 1, 5>>::profile();
+
+    group.bench_with_input(
+        BenchmarkId::new("Verifying", profile.witness_length),
+        &(),
+        |b, _| {
+            let preimage = Fr::rand(rng);
+            let key = CircuitKey::<Fr, Sponge, HashChain<N>, Scheme, 2, 4, 5>::new();
+            let (instance, proof, _) = key.prove_from_inputs([preimage]);
+
+            bench_memory(b, || {
+                let _ok = key.verify(instance.clone(), proof.clone());
+            });
+        },
+    );
+}
+
+fn verification_memory(c: &mut Criterion<PeakMemory>) {
+    let mut group = c.benchmark_group("Verification Memory");
+    group.sampling_mode(SamplingMode::Flat);
+    let mut rng = StdRng::seed_from_u64(0);
+    verify::<11>(&mut group, &mut rng);
+    verify::<89>(&mut group, &mut rng);
+    verify::<178>(&mut group, &mut rng);
+    group.finish()
+}
+
 fn fold<const N: usize>(group: &mut BenchmarkGroup<'_, PeakMemory>, rng: &mut impl Rng)
 where
     Fr: Field,
@@ -82,7 +115,7 @@ where
     );
 }
 
-fn folding(c: &mut Criterion<PeakMemory>) {
+fn folding_memory(c: &mut Criterion<PeakMemory>) {
     let mut group = c.benchmark_group("Folding Memory");
     group.sampling_mode(SamplingMode::Flat);
     let mut rng = StdRng::seed_from_u64(0);
@@ -119,7 +152,7 @@ where
     );
 }
 
-fn commit_folding(c: &mut Criterion<PeakMemory>) {
+fn commit_folding_memory(c: &mut Criterion<PeakMemory>) {
     let mut group = c.benchmark_group("Commit and Fold Memory");
     group.sampling_mode(SamplingMode::Flat);
     let mut rng = StdRng::seed_from_u64(0);
@@ -190,9 +223,10 @@ fn setup_memory(c: &mut Criterion<PeakMemory>) {
 fn memory_benchmarks(c: &mut Criterion<PeakMemory>) {
     srs_memory(c);
     setup_memory(c);
-    proving(c);
-    folding(c);
-    commit_folding(c);
+    proving_memory(c);
+    verification_memory(c);
+    folding_memory(c);
+    commit_folding_memory(c);
 }
 
 criterion_group! {

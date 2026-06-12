@@ -168,8 +168,46 @@ fn commit_folding(c: &mut Criterion) {
     group.finish()
 }
 
+fn verify<const N: usize>(group: &mut BenchmarkGroup<'_, WallTime>, rng: &mut impl Rng)
+where
+    Fr: Field,
+    Scheme: CommmitmentScheme<Fr>,
+    Sponge: Duplex<Fr>,
+{
+    let profile = <HashChain<N> as BuildStructure<Fr, 1, 1, 1, 5>>::profile();
+
+    group.bench_with_input(
+        BenchmarkId::new("Verifying", profile.witness_length),
+        &(),
+        |b, _| {
+            let preimage = Fr::rand(rng);
+            let key = CircuitKey::<Fr, Sponge, HashChain<N>, Scheme, 2, 4, 5>::new();
+            let (instance, proof, _) = key.prove_from_inputs([preimage]);
+
+            b.iter_batched(
+                || (instance.clone(), proof.clone()),
+                |(instance, proof)| key.verify(instance, proof),
+                BatchSize::PerIteration,
+            );
+        },
+    );
+}
+
+fn verifying(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Verification Time");
+    group.sampling_mode(SamplingMode::Flat);
+    let mut rng = StdRng::seed_from_u64(0);
+    verify::<11>(&mut group, &mut rng);
+    verify::<22>(&mut group, &mut rng);
+    verify::<44>(&mut group, &mut rng);
+    verify::<89>(&mut group, &mut rng);
+    verify::<178>(&mut group, &mut rng);
+    group.finish()
+}
+
 fn hash_chain_benchmarks(c: &mut Criterion) {
     proving(c);
+    verifying(c);
     folding(c);
     commit_folding(c);
 }
