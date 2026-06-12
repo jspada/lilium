@@ -21,6 +21,7 @@ use transcript::{
     MessageGuard, TranscriptBuilder, TranscriptGuard,
 };
 
+#[derive(Clone)]
 pub struct LcsProof<F: Field, C: CommmitmentScheme<F>, const IO: usize, const S: usize> {
     reduction_proof: FlcsReductionProof<F, IO, S>,
     linearized_proof: LinearizedProof<F, IO>,

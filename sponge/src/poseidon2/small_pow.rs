@@ -28,9 +28,9 @@ pub fn pow<F: Field, const P: u8>(val: F) -> F {
 #[cfg(test)]
 mod tests {
     use super::pow;
-    use seq_macro::seq;
     use ark_ff::Field;
     use ark_vesta::Fr;
+    use seq_macro::seq;
 
     fn check_pow<const P: u8>(x: Fr) {
         assert_eq!(pow::<Fr, P>(x), x.pow([P as u64]), "P={P},x={x}");
