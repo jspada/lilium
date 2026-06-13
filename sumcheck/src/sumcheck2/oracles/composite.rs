@@ -49,8 +49,7 @@ where
     mles: Rc<Vec<SF::Mles<F>>>,
     vars: usize,
     evals_per_oracle: (usize, usize),
-    partial_oracle1: P1,
-    partial_oracle2: P2,
+    partial_oracles: (P1, P2),
 }
 
 impl<F, SF, P1, P2> CompositeOracle<F, SF, P1, P2>
@@ -81,14 +80,18 @@ where
             });
         let partial_oracle1 = P1::build(builder1, &f, Rc::clone(&mles));
         let partial_oracle2 = P2::build(builder2, &f, Rc::clone(&mles));
+        let partial_oracles = (partial_oracle1, partial_oracle2);
         Self {
             f,
             mles,
             vars,
             evals_per_oracle,
-            partial_oracle1,
-            partial_oracle2,
+            partial_oracles,
         }
+    }
+
+    pub fn inner_oracles(&self) -> &(P1, P2) {
+        &self.partial_oracles
     }
 }
 
@@ -342,8 +345,8 @@ where
             }
         }
         let f = oracle.f.clone();
-        let oracle1_key = From::from(oracle.partial_oracle1.clone());
-        let oracle2_key = From::from(oracle.partial_oracle2.clone());
+        let oracle1_key = From::from(oracle.partial_oracles.0.clone());
+        let oracle2_key = From::from(oracle.partial_oracles.1.clone());
         CompositeReductionKey {
             oracle1_evals,
             oracle2_evals,
@@ -524,8 +527,8 @@ where
         let (evals1, evals2) = structure.evals_per_oracle;
         let (instance1, instance2) = instance.clone().split(evals1, evals2);
 
-        let check1 = P1::QueryRelation::check(&structure.partial_oracle1, &instance1, witness);
-        let check2 = P2::QueryRelation::check(&structure.partial_oracle2, &instance2, witness);
+        let check1 = P1::QueryRelation::check(&structure.partial_oracles.0, &instance1, witness);
+        let check2 = P2::QueryRelation::check(&structure.partial_oracles.1, &instance2, witness);
 
         check1 && check2
     }
@@ -552,10 +555,9 @@ where
 {
     fn from(value: CompositeOracle<F, SF, P1, P2>) -> Self {
         let CompositeOracle {
-            partial_oracle1,
-            partial_oracle2,
-            ..
+            partial_oracles, ..
         } = value;
+        let (partial_oracle1, partial_oracle2) = partial_oracles;
         let oracle1_key = P1::VerifierKey::from(partial_oracle1);
         let oracle2_key = P2::VerifierKey::from(partial_oracle2);
         Self {
