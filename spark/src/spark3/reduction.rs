@@ -1,5 +1,6 @@
 use crate::spark3::{
     committed::{MinorStructure, SparkOracle},
+    prove::ProverKey,
     sumcheck_argument::{SparkChallenges, SparkEvals},
     SparkInstance, StaticSparkRelation, StaticSparkStructure,
 };
@@ -35,10 +36,10 @@ type Rel2<F, C> = OpeningRelation<F, C>;
 
 #[derive(Clone, Debug)]
 pub struct Proof<F: Field, C: CommitmentScheme<F>, const N: usize> {
-    lookup_commitments: [C::Commitment; N],
-    inverse_commitments: [C::Commitment; N],
-    sumcheck_proof: Vec<SumcheckMessage<F>>,
-    oracle_query_proof: ProverEvals<F>,
+    pub lookup_commitments: [C::Commitment; N],
+    pub inverse_commitments: [C::Commitment; N],
+    pub sumcheck_proof: Vec<SumcheckMessage<F>>,
+    pub oracle_query_proof: ProverEvals<F>,
 }
 
 fn split_point<F: Field, const N: usize>(point: &MultiPoint<F>) -> [MultiPoint<F>; N] {
@@ -72,7 +73,7 @@ where
     F: Field,
     C: CommitmentScheme<F>,
 {
-    type ProverKey = ();
+    type ProverKey = ProverKey<F, C, N>;
 
     type VerifierKey = Key<F, C, SparkEvals<(), N>, N>;
 
@@ -113,12 +114,25 @@ where
     }
 
     fn prove<S: Duplex<F>>(
-        _key: &Self::ProverKey,
-        _instance: SparkInstance<F>,
+        key: &Self::ProverKey,
+        instance: SparkInstance<F>,
         _witness: (),
-        _transcript: &mut Transcript<F, S>,
+        transcript: &mut Transcript<F, S>,
     ) -> ProverOutput<OpeningRelation<F, C>, Self::Proof> {
-        todo!()
+        //TODO: allow more flexibility
+        assert_eq!(instance.point.vars(), N * 8);
+        let points = instance
+            .point
+            .inner()
+            .chunks(8)
+            .map(|chunk| {
+                assert_eq!(chunk.len(), 8);
+                MultiPoint::new(chunk.to_vec())
+            })
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+        key.prove(points, transcript)
     }
 
     fn verify<S: Duplex<F>>(
@@ -203,7 +217,8 @@ where
     }
 }
 
-fn sumcheck_instance<F, C, const N: usize>(
+//TODO: maybe move to mod.rs
+pub(crate) fn sumcheck_instance<F, C, const N: usize>(
     sum: F,
     lookup_commitments: [C::Commitment; N],
     inverse_commitments: [C::Commitment; N],

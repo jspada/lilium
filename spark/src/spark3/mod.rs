@@ -4,6 +4,7 @@ use sumcheck::{eq, polynomials::MultiPoint};
 use transcript::reduction2::Relation;
 
 mod committed;
+mod prove;
 mod reduction;
 pub mod sumcheck_argument;
 
