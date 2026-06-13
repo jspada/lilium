@@ -22,7 +22,7 @@ use sumcheck::{
             partial::{Nature, PartialOracle, PartialQueryInstance},
             SumcheckFunction,
         },
-        SumcheckInstance, SumcheckMessage, SumcheckReduction, SumcheckVerifierKey,
+        SumcheckError, SumcheckInstance, SumcheckMessage, SumcheckReduction, SumcheckVerifierKey,
     },
 };
 use transcript::reduction2::{
@@ -89,6 +89,13 @@ where
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum SparkError {
+    Sumcheck(SumcheckError),
+    CompositeOracle,
+    CoreOracle,
+}
+
 impl<F, C, const N: usize> Reduction<F, Rel1<F, N>, Rel2<F, C>> for SparkReduction<F, C, N>
 where
     F: Field,
@@ -100,7 +107,7 @@ where
 
     type Proof = Proof<F, C, N>;
 
-    type Error = ();
+    type Error = SparkError;
 
     fn transcript_pattern(
         key: &Self::VerifierKey,
@@ -207,27 +214,25 @@ where
         );
 
         let sumcheck_proof = proof.clone().map(|proof| proof.sumcheck_proof);
-        //TODO: handle
         let query_instance = SumcheckReduction::verify(
             &key.sumcheck_key,
             sumcheck_instance,
             sumcheck_proof,
             transcript,
         )
-        .unwrap();
+        .map_err(SparkError::Sumcheck)?;
 
         let oracle_proof = proof.map(|proof| proof.oracle_query_proof);
-        //TODO: handle
         let red =
             CompositeOracle::verify(&key.oracle_key, query_instance, oracle_proof, transcript)
-                .unwrap();
+                .map_err(|_| SparkError::CompositeOracle)?;
 
         let (core_query, committed_query) = red;
         let core_query: PartialQueryInstance<F, CoreOracleInstance<F, _>> = core_query;
 
         let core_proof = GuardedProof::empty();
-        //TODO: handle
-        CoreOracle::verify(key.oracle_key.p1_key(), core_query, core_proof, transcript).unwrap();
+        CoreOracle::verify(key.oracle_key.p1_key(), core_query, core_proof, transcript)
+            .map_err(|_| SparkError::CoreOracle)?;
 
         let committed_query: PartialQueryInstance<F, CommittedOracleInstance<F, C, _>> =
             committed_query;
