@@ -23,7 +23,7 @@ pub struct MinorStructure<const N: usize> {
 }
 
 impl<const N: usize> MinorStructure<N> {
-    fn new<F: Field>(mle: &SparseMle<F, N>) -> Self {
+    pub(crate) fn new<F: Field>(mle: &SparseMle<F, N>) -> Self {
         let mut counts: [Box<[usize; 256]>; N] =
             [(); N].map(|_| (vec![0; BYTE]).into_boxed_slice().try_into().unwrap());
 

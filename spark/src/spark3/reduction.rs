@@ -68,6 +68,27 @@ where
     oracle_key: CompositeReductionKey<F, SF, CoreOracle<F, SF>, CommittedOracle<F, C, SF>>,
 }
 
+impl<F, C, SF, const N: usize> Key<F, C, SF, N>
+where
+    F: Field,
+    C: CommitmentScheme<F>,
+    SF: SumcheckFunction<F>,
+    SF::Natures: Nature,
+    CommittedOracle<F, C, SF>: PartialOracle<F, SF>,
+{
+    pub(crate) fn new(
+        minor_structure: MinorStructure<N>,
+        sumcheck_key: SumcheckVerifierKey<F>,
+        oracle_key: CompositeReductionKey<F, SF, CoreOracle<F, SF>, CommittedOracle<F, C, SF>>,
+    ) -> Self {
+        Self {
+            minor_structure,
+            sumcheck_key,
+            oracle_key,
+        }
+    }
+}
+
 impl<F, C, const N: usize> Reduction<F, Rel1<F, N>, Rel2<F, C>> for SparkReduction<F, C, N>
 where
     F: Field,
@@ -100,17 +121,19 @@ where
     }
 
     fn verifier_key(
-        _structure_1: &StaticSparkStructure<F, N>,
-        _structure_2: &C,
+        structure_1: &StaticSparkStructure<F, N>,
+        structure_2: &C,
     ) -> Self::VerifierKey {
-        todo!()
+        // TODO: specialize instead of creating both keys.
+        let (verifier_key, _) = Self::key_pair(structure_1, structure_2);
+        verifier_key
     }
 
     fn key_pair(
-        _structure_1: &StaticSparkStructure<F, N>,
-        _structure_2: &C,
+        structure_1: &StaticSparkStructure<F, N>,
+        structure_2: &C,
     ) -> (Self::VerifierKey, Self::ProverKey) {
-        todo!()
+        ProverKey::new(&structure_1.mle, structure_2.clone())
     }
 
     fn prove<S: Duplex<F>>(

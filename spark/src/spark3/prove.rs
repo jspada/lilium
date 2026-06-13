@@ -1,7 +1,8 @@
 use crate::spark3::{
     committed::{MinorStructure, SparkOracle},
-    reduction::{sumcheck_instance, Proof},
+    reduction::{self, sumcheck_instance, Proof},
     sumcheck_argument::{SparkChallenges, SparkEvals},
+    SparseMle,
 };
 use ark_ff::{batch_inversion, Field};
 use commit::commit2::{
@@ -38,11 +39,63 @@ pub struct ProverKey<F: Field, C: CommitmentScheme<F>, const N: usize> {
     committed_oracle_key: oracle::ProverKey<F, SparkEvals<(), N>, C>,
 }
 
+type VerifierKey<F, C, const N: usize> = reduction::Key<F, C, SparkEvals<(), N>, N>;
+
 impl<F, C, const N: usize> ProverKey<F, C, N>
 where
     F: Field,
     C: CommitmentScheme<F>,
 {
+    pub fn new(mle: &SparseMle<F, N>, pcs: C) -> (VerifierKey<F, C, N>, Self) {
+        let minor_structure = MinorStructure::new(mle);
+        let minor_structure = Rc::new(minor_structure);
+        let mut addresses = [(); N].map(|_| Vec::new());
+
+        for address in &mle.addresses {
+            for (i, address) in address.iter().enumerate() {
+                addresses[i].push(*address);
+            }
+        }
+
+        let sumcheck_structure = SparkEvals::structure(mle);
+        let sumcheck_structure = Rc::new(sumcheck_structure);
+
+        let f = SparkEvals::<(), N>::default();
+
+        let core_oracle = CoreOracle::new(SparkEvals::small_functions());
+
+        let oracle = SparkOracle::new(
+            f,
+            Rc::clone(&sumcheck_structure),
+            core_oracle.clone(),
+            pcs.clone(),
+        );
+
+        let (sumcheck_verifier_key, sumcheck_key) = SumcheckReduction::key_pair(&oracle, &oracle);
+
+        let (_, oracle_key) = CompositeOracle::key_pair(&oracle, oracle.inner_oracles());
+
+        let (_, committed_oracle_key) = CommittedOracle::key_pair(&oracle.inner_oracles().1, &pcs);
+
+        let verifier_key = VerifierKey::new(
+            (*minor_structure).clone(),
+            sumcheck_verifier_key,
+            oracle_key.clone(),
+        );
+
+        let prover_key = Self {
+            addresses,
+            minor_structure,
+            sumcheck_structure,
+            pcs,
+            sumcheck_key,
+            oracle_key,
+            core_oracle,
+            committed_oracle_key,
+        };
+        (verifier_key, prover_key)
+    }
+
     pub(crate) fn prove<S: Duplex<F>>(
         &self,
         points: [MultiPoint<F>; N],
