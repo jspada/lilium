@@ -257,9 +257,10 @@ where
     F: Field,
     C: CommitmentScheme<F>,
 {
+    let vars = zerocheck_point.vars();
     let coefficients: SparkEvals<Vec<F>, N> =
         SparkEvals::oracle_instance(challenges, zerocheck_point);
-    let core_oracle_instance = CoreOracleInstance::new(&coefficients);
+    let core_oracle_instance = CoreOracleInstance::new(&coefficients, vars);
 
     let commits = SparkEvals::arrange_commitments(lookup_commitments, inverse_commitments);
     let committed_oracle_instance = CommittedOracleInstance::new(commits);

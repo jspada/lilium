@@ -67,12 +67,13 @@ where
     SF: SumcheckFunction<F>,
     SF::Natures: Nature,
 {
-    /// For CoreNature::SmallInstance(n), vec![_,n] must be provided.
+    /// For CoreNature::SmallInstance(Coeffs::Fixed(n)), vec![_,n] must be provided.
+    /// For CoreNature::SmallInstance(Coeffs::PerVariable), vec![_,v] must be provided,
+    /// with v the number of variables.
     /// For CoreNature::Challenge, vec![chall] must be provided.
     /// For every other nature, and empty vec should be used, any
     /// other cases will result in panic.
-    pub fn new(coefficients: &SF::Mles<Vec<F>>) -> Self {
-        //TODO: request vars and check against
+    pub fn new(coefficients: &SF::Mles<Vec<F>>, vars: usize) -> Self {
         use CoreNature::*;
         let natures = SF::natures();
         let coefficients = SF::combine(coefficients, &natures, |coeffs, nature| {
@@ -82,7 +83,10 @@ where
                     assert_eq!(coeffs.len(), n, "unexpected number of coefficients");
                     Some(coeffs.to_vec())
                 }
-                Some(SmallInstance(Coeffs::PerVariable)) => Some(coeffs.to_vec()),
+                Some(SmallInstance(Coeffs::PerVariable)) => {
+                    assert_eq!(coeffs.len(), vars, "unexpected number of coefficients");
+                    Some(coeffs.to_vec())
+                }
                 Some(Challenge) => {
                     assert_eq!(
                         coeffs.len(),
@@ -111,13 +115,12 @@ where
 
 /// Unpacks the vector of coefficients into SF::Mles acording to SF::natures().
 /// CoreNature::SmallStructure will get an empty vec![].
-fn decode<F, SF>(coefficients: Vec<Vec<F>>) -> SF::Mles<Option<Vec<F>>>
+fn decode<F, SF>(coefficients: Vec<Vec<F>>, vars: usize) -> SF::Mles<Option<Vec<F>>>
 where
     F: Field,
     SF: SumcheckFunction<F>,
     SF::Natures: Nature,
 {
-    //TODO: request vars and check against
     let natures = SF::natures();
     let mut coefficients = coefficients.into_iter();
 
@@ -133,7 +136,11 @@ where
                     assert_eq!(n, coeff.len());
                     coeff
                 }
-                CoreNature::SmallInstance(Coeffs::PerVariable) => coefficients.next().unwrap(),
+                CoreNature::SmallInstance(Coeffs::PerVariable) => {
+                    let coeff = coefficients.next().unwrap();
+                    assert_eq!(vars, coeff.len());
+                    coeff
+                }
                 CoreNature::Challenge => {
                     let coeff = coefficients.next().unwrap();
                     assert_eq!(1, coeff.len());
@@ -308,7 +315,7 @@ where
         instance: &Self::Instance,
         point: &MultiPoint<F>,
     ) -> SF::Mles<OracleEval<F>> {
-        let coeffs = decode::<F, SF>(instance.elements.clone());
+        let coeffs = decode::<F, SF>(instance.elements.clone(), point.vars());
         let functions = &key.functions;
         SF::combine(functions, &coeffs, |function, coeff| {
             let eval = coeff.as_ref().map(|coeff| function(coeff, point));
@@ -348,9 +355,10 @@ where
         let _ = witness;
         let oracle_instance = instance.oracle_instance();
         let point = instance.point();
+        let vars = point.vars();
         let expected_evals = instance.evals();
 
-        let coefficients = decode::<F, SF>(oracle_instance.elements.clone());
+        let coefficients = decode::<F, SF>(oracle_instance.elements.clone(), vars);
         let functions = &structure.functions;
         let natures = SF::natures();
 
