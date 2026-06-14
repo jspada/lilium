@@ -9,7 +9,7 @@ use sumcheck::{
         evals::{Evals, EvalsCore},
         oracles::{
             composite::Either,
-            core::{CoreNature, Func},
+            core::{Coeffs, CoreNature, Func},
             SumcheckFunction,
         },
     },
@@ -180,8 +180,7 @@ impl<F: Field, const N: usize> SumcheckFunction<F> for SparkEvals<(), N> {
         SparkEvals {
             dimensions,
             value: r(CommittedNature::Structure),
-            //TODO: actually is 1 per variable.
-            zerocheck: Either::Left(CoreNature::SmallInstance(2)),
+            zerocheck: Either::Left(CoreNature::SmallInstance(Coeffs::PerVariable)),
             challenges: SparkChallenges::natures(),
         }
     }

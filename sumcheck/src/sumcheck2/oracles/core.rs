@@ -17,17 +17,6 @@ use transcript::reduction2::{
     TranscriptBuilder, VerifierTranscript,
 };
 
-/// The number of coefficients used to represent the small polynomial.
-#[derive(Clone, Copy, Debug)]
-pub enum Coeffs {
-    /// For purely structural polynomials.
-    None,
-    /// Single element, typical of challenges.
-    One,
-    Two,
-    OnePerVariable,
-}
-
 pub type Func<F> = fn(&[F], &MultiPoint<F>) -> F;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -83,15 +72,17 @@ where
     /// For every other nature, and empty vec should be used, any
     /// other cases will result in panic.
     pub fn new(coefficients: &SF::Mles<Vec<F>>) -> Self {
+        //TODO: request vars and check against
         use CoreNature::*;
         let natures = SF::natures();
         let coefficients = SF::combine(coefficients, &natures, |coeffs, nature| {
             let nature: Option<CoreNature> = nature.into_dynamic().into();
             match nature {
-                Some(SmallInstance(n)) => {
+                Some(SmallInstance(Coeffs::Fixed(n))) => {
                     assert_eq!(coeffs.len(), n, "unexpected number of coefficients");
                     Some(coeffs.to_vec())
                 }
+                Some(SmallInstance(Coeffs::PerVariable)) => Some(coeffs.to_vec()),
                 Some(Challenge) => {
                     assert_eq!(
                         coeffs.len(),
@@ -126,6 +117,7 @@ where
     SF: SumcheckFunction<F>,
     SF::Natures: Nature,
 {
+    //TODO: request vars and check against
     let natures = SF::natures();
     let mut coefficients = coefficients.into_iter();
 
@@ -136,11 +128,12 @@ where
             let nature: Option<CoreNature> = nature.into_dynamic().into();
             nature.map(|nature| match nature {
                 CoreNature::SmallStructure => vec![],
-                CoreNature::SmallInstance(n) => {
+                CoreNature::SmallInstance(Coeffs::Fixed(n)) => {
                     let coeff = coefficients.next().unwrap();
                     assert_eq!(n, coeff.len());
                     coeff
                 }
+                CoreNature::SmallInstance(Coeffs::PerVariable) => coefficients.next().unwrap(),
                 CoreNature::Challenge => {
                     let coeff = coefficients.next().unwrap();
                     assert_eq!(1, coeff.len());
@@ -171,14 +164,15 @@ where
 
     type Error = CoreOracleError;
 
-    fn len(_params: &Self::Params) -> usize {
+    fn len(params: &Self::Params) -> usize {
         let natures = SF::natures().flatten_vec();
         let mut len = 0;
         for nature in natures {
             let nature: Option<CoreNature> = nature.into_dynamic().into();
             let eval_len = match nature {
                 Some(CoreNature::SmallStructure) => 0,
-                Some(CoreNature::SmallInstance(coeffs)) => coeffs,
+                Some(CoreNature::SmallInstance(Coeffs::Fixed(n))) => n,
+                Some(CoreNature::SmallInstance(Coeffs::PerVariable)) => params.vars,
                 Some(CoreNature::Challenge) => 1,
                 None => 0,
             };
@@ -187,7 +181,7 @@ where
         len
     }
 
-    fn to_field_elements(&self, _params: &OracleParams) -> Result<Vec<F>, Self::Error> {
+    fn to_field_elements(&self, params: &OracleParams) -> Result<Vec<F>, Self::Error> {
         use CoreOracleError::*;
         let natures = SF::natures().flatten_vec();
 
@@ -197,7 +191,10 @@ where
             let nature: Option<CoreNature> = nature.into_dynamic().into();
             match nature {
                 Some(CoreNature::SmallInstance(coeffs)) => {
-                    let expected = coeffs;
+                    let expected = match coeffs {
+                        Coeffs::Fixed(n) => n,
+                        Coeffs::PerVariable => params.vars,
+                    };
                     if let Some(coeffs) = coefficients.next() {
                         if coeffs.len() != expected {
                             return Err(CoefficientsLength);
@@ -225,11 +222,18 @@ where
     }
 }
 
+/// The number of coefficients used to represent the small polynomial.
+#[derive(Clone, Copy, Debug)]
+pub enum Coeffs {
+    Fixed(usize),
+    PerVariable,
+}
+
 #[derive(Clone, Copy, Debug)]
 pub enum CoreNature {
     SmallStructure,
     /// With n coefficients in the instance.
-    SmallInstance(usize),
+    SmallInstance(Coeffs),
     Challenge,
 }
 
@@ -282,7 +286,7 @@ where
             let nature: Option<CoreNature> = nature.into_dynamic().into();
             if let Some(nature) = nature {
                 match nature {
-                    CoreNature::SmallInstance(n) => {
+                    CoreNature::SmallInstance(Coeffs::Fixed(n)) => {
                         let coeffs = coefficients.next().unwrap();
                         assert_eq!(coeffs.len(), n);
                         F::ZERO
