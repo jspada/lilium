@@ -1,5 +1,7 @@
 use super::Relation;
-use crate::reduction2::{GuardedProof, Transcript, TranscriptBuilder, VerifierTranscript};
+use crate::reduction2::{
+    FoldingRelation, GuardedProof, Transcript, TranscriptBuilder, VerifierTranscript,
+};
 use ark_ff::Field;
 use sponge::sponge::Duplex;
 use std::fmt::Debug;
@@ -47,3 +49,6 @@ pub trait Reduction<F: Field, R1: Relation, R2: Relation> {
 
 /// An argument is just a reduction where the target relation is unit.
 pub trait Argument<F: Field, R: Relation>: Reduction<F, R, ()> {}
+
+/// A reduction from R x R -> R.
+pub trait FoldingScheme<F: Field, R: Relation>: Reduction<F, FoldingRelation<R>, R> {}

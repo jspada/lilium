@@ -25,8 +25,8 @@ pub enum Error {
 pub use message::Message;
 pub use proof::GuardedProof;
 pub use prover::Prover;
-pub use reduction::{Argument, ProverOutput, Reduction};
-pub use relations::Relation;
+pub use reduction::{Argument, FoldingScheme, ProverOutput, Reduction};
+pub use relations::{FoldingRelation, Relation};
 pub use transcript::{Guard, Transcript, VerifierTranscript};
 pub use transcript_builder::TranscriptBuilder;
 pub use verifier::Verifier;
