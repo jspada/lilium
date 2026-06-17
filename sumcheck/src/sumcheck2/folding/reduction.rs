@@ -5,7 +5,7 @@ use crate::{
         degree,
         evals::{EvalsCore, Mles},
         oracles::Oracle,
-        ProverKey, SumcheckInstance, SumcheckMessage, SumcheckRelation,
+        ProverKey, SumcheckError, SumcheckInstance, SumcheckMessage, SumcheckRelation,
     },
 };
 use ark_ff::Field;
@@ -45,7 +45,7 @@ where
 
     type Proof = SumcheckMessage<F>;
 
-    type Error = ();
+    type Error = SumcheckError;
 
     fn transcript_pattern(
         key: &Self::VerifierKey,
@@ -156,10 +156,7 @@ where
         proof: GuardedProof<Self::Proof>,
         transcript: &mut VerifierTranscript<F, S>,
     ) -> Result<SumcheckInstance<F, O>, Self::Error> {
-        // TODO: handle
-        let (_, [beta]) = transcript
-            .receive_message(|_| (), &GuardedProof::empty(), &())
-            .unwrap();
+        let Ok((_, [beta])) = transcript.receive_message(|_| (), &GuardedProof::empty(), &());
         // eq(x,beta) = x * beta + (1-x) * (1-beta)
         // eq(0,beta) = 1 - beta
         // eq(1,beta) = beta
@@ -169,16 +166,13 @@ where
         // r, check message agrees with original sum.
         // And then the work is reduced to a new sumcheck instance over the same polynomial
         // with 1 variable fixed with r.
-        // TODO: handle
         let (msg, [r]) = transcript
             .receive_message(Clone::clone, &proof, &(key.degree + 1))
-            .unwrap();
+            .map_err(SumcheckError::Degree)?;
         let msg = msg.to_message();
 
         if sum != msg.eval_at_0() + msg.eval_at_1() {
-            // return Err(SumcheckError::RoundSum);
-            // TODO: handle
-            panic!()
+            return Err(SumcheckError::RoundSum);
         }
 
         let eqr = r * beta + (F::one() - r) * (F::one() - beta);
