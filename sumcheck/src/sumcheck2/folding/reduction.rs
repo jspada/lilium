@@ -2,7 +2,9 @@ use crate::{
     barycentric_eval::BarycentricWeights,
     folding::utils::FieldFolder,
     sumcheck2::{
-        evals::Mles, oracles::Oracle, SumcheckInstance, SumcheckMessage, SumcheckRelation,
+        evals::{EvalsCore, Mles},
+        oracles::Oracle,
+        ProverKey, SumcheckInstance, SumcheckMessage, SumcheckRelation,
     },
 };
 use ark_ff::Field;
@@ -15,12 +17,13 @@ use transcript::reduction2::{
 
 pub struct SumFold<F, O>(PhantomData<(F, O)>);
 
-pub struct SumFoldKey<F: Field> {
+pub struct SumFoldKey<F: Field, O: Oracle<F>> {
     // Weights for degree d.
-    // weights: BarycentricWeights<F>,
+    weights: BarycentricWeights<F>,
     // Weights for degree d + 1.
     extended_weights: BarycentricWeights<F>,
     degree: usize,
+    f: O::Function,
 }
 
 trait Foldable<F> {
@@ -34,9 +37,9 @@ where
     O: Oracle<F>,
     O::Instance: Foldable<F>,
 {
-    type ProverKey = SumFoldKey<F>;
+    type ProverKey = SumFoldKey<F, O>;
 
-    type VerifierKey = SumFoldKey<F>;
+    type VerifierKey = SumFoldKey<F, O>;
 
     type Proof = SumcheckMessage<F>;
 
@@ -59,12 +62,79 @@ where
     }
 
     fn prove<S: Duplex<F>>(
-        _key: &Self::ProverKey,
-        _instance: [SumcheckInstance<F, O>; 2],
-        _witness: [Vec<Mles<O::Function, F>>; 2],
-        _transcript: &mut Transcript<F, S>,
+        key: &Self::ProverKey,
+        instance: [SumcheckInstance<F, O>; 2],
+        witness: [Vec<Mles<O::Function, F>>; 2],
+        transcript: &mut Transcript<F, S>,
     ) -> ProverOutput<SumcheckRelation<F, O>, Self::Proof> {
-        todo!()
+        let [mut w1, w2] = witness;
+
+        let mut acc = SumcheckMessage::zero(key.degree);
+        // Compute message with original function first.
+        let _ = w1.iter().zip(w2.iter()).fold(&mut acc.0, |acc, evals| {
+            let (e1, e2) = evals;
+            let evals = [e1, e2];
+            ProverKey::<F, O>::eval_acc(&key.f, acc, evals);
+            acc
+        });
+        let message = acc;
+
+        // Check against sums if provided.
+        {
+            let message = message.to_message();
+            assert_eq!(instance[0].sum, message.eval_at_0());
+            assert_eq!(instance[1].sum, message.eval_at_1());
+        }
+
+        // Lock instance and generate challenge.
+        let [beta] = transcript.send_message(&(), &());
+
+        let eq_beta = SumcheckMessage::new_degree_n(F::one() - beta, beta, key.degree + 1);
+        // Compute final message eq(beta,x) * f(x).
+        // By doing it at the end, having to compute d+2 points in the whole hypercube is
+        // avoided, it is done instead over d+1 points.
+        // For that same reason the original message has to be extended to d+2 points.
+        let message = {
+            let extended = message.clone().extend(&key.weights);
+            extended * eq_beta
+        };
+        // Message is sent and sumcheck challenge received.
+        let [r] = transcript.send_message(&message, &(key.degree + 1));
+
+        // Checking that message agrees with sum.
+        let sum = {
+            let sum = instance[0].sum * (F::ONE - beta) + instance[1].sum * beta;
+            let message = message.to_message();
+            let eval_zero = message.eval_at_0();
+            let eval_one = message.eval_at_1();
+            assert_eq!(sum, eval_zero + eval_one);
+            sum
+        };
+
+        let proof = message;
+
+        let instance = {
+            let folder = FieldFolder::new(r);
+            let [a, b] = instance;
+            let oracle_instance = Foldable::fold(&folder, a.oracle_instance, b.oracle_instance);
+            SumcheckInstance {
+                sum,
+                oracle_instance,
+            }
+        };
+
+        // Witness is folded as expected from the sumcheck reduction.
+        for (e1, e2) in w1.iter_mut().zip(w2.iter()) {
+            let folded = e1.combine(e2, |e1, e2| (F::ONE - r) * e1 + r * e2);
+            *e1 = folded;
+        }
+        let witness = w1;
+
+        ProverOutput {
+            instance,
+            witness,
+            proof,
+        }
     }
 
     fn verify<S: Duplex<F>>(
