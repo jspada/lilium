@@ -2,6 +2,7 @@ use crate::{
     barycentric_eval::BarycentricWeights,
     folding::utils::FieldFolder,
     sumcheck2::{
+        degree,
         evals::{EvalsCore, Mles},
         oracles::Oracle,
         ProverKey, SumcheckInstance, SumcheckMessage, SumcheckRelation,
@@ -17,6 +18,7 @@ use transcript::reduction2::{
 
 pub struct SumFold<F, O>(PhantomData<(F, O)>);
 
+#[derive(Clone, Debug)]
 pub struct SumFoldKey<F: Field, O: Oracle<F>> {
     // Weights for degree d.
     weights: BarycentricWeights<F>,
@@ -53,12 +55,23 @@ where
         builder.round::<F, SumcheckMessage<F>, 1>(&degree)
     }
 
-    fn verifier_key(_structure_1: &O, _structure_2: &O) -> Self::VerifierKey {
-        todo!()
+    fn verifier_key(oracle: &O, _: &O) -> Self::VerifierKey {
+        let degree = degree::sumcheck_degree(oracle);
+        let weights = BarycentricWeights::compute(degree as u32);
+        let extended_weights = BarycentricWeights::compute(degree as u32 + 1);
+        let f = oracle.function().clone();
+
+        SumFoldKey {
+            weights,
+            extended_weights,
+            degree,
+            f,
+        }
     }
 
-    fn key_pair(_structure_1: &O, _structure_2: &O) -> (Self::VerifierKey, Self::ProverKey) {
-        todo!()
+    fn key_pair(structure_1: &O, structure_2: &O) -> (Self::VerifierKey, Self::ProverKey) {
+        let key = Self::verifier_key(structure_1, structure_2);
+        (key.clone(), key)
     }
 
     fn prove<S: Duplex<F>>(
