@@ -149,25 +149,30 @@ impl<F: Field, O: Oracle<F>> ProverKey<F, O> {
 
         let mut message = vec![F::zero(); degree + 1];
         for (left, right) in left.iter().zip(right) {
-            // The last evaluations, and what is needed to compute the next.
-            let mut e = <O::Function as Evals>::combine::<F, F, _, _>(left, right, |e0, e1| {
-                let coeff = *e1 - e0;
-                let last_eval = e0;
-                (*last_eval, coeff)
-            });
-
-            for m in message.iter_mut() {
-                let evals = <O::Function as Evals>::map_evals(&e, |(eval, _)| *eval);
-                let eval: F = self.f.function(&evals);
-
-                *m += eval;
-                <O::Function as Evals>::apply(&mut e, |(last, coeff)| {
-                    *last += coeff;
-                });
-            }
+            Self::eval_acc(&self.f, &mut message, [left, right]);
         }
 
         SumcheckMessage(message)
+    }
+
+    pub(crate) fn eval_acc(f: &O::Function, acc: &mut [F], evals: [&Mles<O::Function, F>; 2]) {
+        let [left, right] = evals;
+        // The last evaluations, and what is needed to compute the next.
+        let mut e = <O::Function as Evals>::combine::<F, F, _, _>(left, right, |e0, e1| {
+            let coeff = *e1 - e0;
+            let last_eval = e0;
+            (*last_eval, coeff)
+        });
+
+        for m in acc.iter_mut() {
+            let evals = <O::Function as Evals>::map_evals(&e, |(eval, _)| *eval);
+            let eval: F = f.function(&evals);
+
+            *m += eval;
+            <O::Function as Evals>::apply(&mut e, |(last, coeff)| {
+                *last += coeff;
+            });
+        }
     }
 
     fn bind_variable(&self, mles: &mut Vec<Mles<O::Function, F>>, var: F) {
