@@ -10,8 +10,9 @@ use transcript::reduction2::{
     VerifierTranscript,
 };
 
+pub use evals::ZerocheckNature;
 pub use reduction::ZerocheckReduction;
-pub use relation::Zerocheck;
+pub use relation::{ZeroSumcheck, Zerocheck};
 
 mod evals;
 mod reduction;
