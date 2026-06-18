@@ -3,10 +3,10 @@ use crate::sumcheck2::{
     oracles::{EvalLocation, Oracle, SumcheckFunction},
 };
 use ark_ff::Field;
-use std::marker::PhantomData;
+use std::{marker::PhantomData, ops::Add};
 use transcript::reduction2::{Message, Relation};
 
-pub(crate) fn merge<F: Field, O: Oracle<F>>(
+fn merge<F: Field, O: Oracle<F>>(
     structure: &Mles<O::Function, F>,
     instance: &Mles<O::Function, F>,
     witness: &Mles<O::Function, F>,
@@ -32,6 +32,30 @@ pub(crate) fn merge<F: Field, O: Oracle<F>>(
             Witness => *w,
         },
     )
+}
+
+pub(crate) fn oracle_evals<F: Field, O: Oracle<F>>(
+    oracle: &O,
+    instance: &O::Instance,
+    witness: &[Mles<O::Function, F>],
+) -> Vec<F> {
+    let locations: Mles<O::Function, O::Nature> = oracle.natures();
+    let locations: Mles<O::Function, EvalLocation> =
+        <O::Function as Evals>::map_evals(&locations, |n: &O::Nature| (*n).into());
+
+    let mle = oracle.structure();
+    assert_eq!(mle.len(), witness.len());
+
+    let instance_evals = O::instance_evals(instance);
+    let f = oracle.function();
+
+    mle.iter()
+        .zip(witness)
+        .map(|(structure, witness)| {
+            let evals = merge::<F, O>(structure, &instance_evals, witness, &locations);
+            f.function(&evals)
+        })
+        .collect()
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -84,23 +108,9 @@ impl<F: Field, O: Oracle<F>> Relation for SumcheckRelation<F, O> {
         instance: &Self::Instance,
         witness: &Self::Witness,
     ) -> bool {
-        let locations: Mles<O::Function, O::Nature> = structure.natures();
-        let locations: Mles<O::Function, EvalLocation> =
-            <O::Function as Evals>::map_evals(&locations, |n: &O::Nature| (*n).into());
-
-        let mle = structure.structure();
-        // Creating such a thing shouldn't be allowed, thus it will
-        // panic instead of returning false.
-        assert_eq!(mle.len(), witness.len());
-
-        let instance_evals = O::instance_evals(&instance.oracle_instance);
-        let f = structure.function();
-        let mut sum = F::ZERO;
-        for (structure, witness) in mle.iter().zip(witness) {
-            let evals = merge::<F, O>(structure, &instance_evals, witness, &locations);
-            let eval: F = f.function(&evals);
-            sum += eval;
-        }
+        let sum = oracle_evals(structure, &instance.oracle_instance, witness)
+            .into_iter()
+            .fold(F::ZERO, Add::add);
 
         sum == instance.sum
     }
