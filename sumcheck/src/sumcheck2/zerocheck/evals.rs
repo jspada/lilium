@@ -2,17 +2,17 @@ use crate::{
     sumcheck::Var,
     sumcheck2::{
         evals::{Evals, EvalsCore},
-        oracles::SumcheckFunction,
+        oracles::{EvalLocation, SumcheckFunction},
     },
 };
 use ark_ff::Field;
 use std::fmt::Debug;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[allow(dead_code)]
 pub struct ZeroCheckEvals<V, I> {
-    zerocheck: V,
-    inner: I,
+    pub(crate) zerocheck: V,
+    pub(crate) inner: I,
 }
 
 impl<V, I> EvalsCore<V> for ZeroCheckEvals<V, I>
@@ -111,6 +111,15 @@ where
 pub enum ZerocheckNature<I> {
     Zerocheck,
     Inner(I),
+}
+
+impl<I: Into<EvalLocation>> From<ZerocheckNature<I>> for EvalLocation {
+    fn from(val: ZerocheckNature<I>) -> Self {
+        match val {
+            ZerocheckNature::Zerocheck => EvalLocation::Witness,
+            ZerocheckNature::Inner(i) => i.into(),
+        }
+    }
 }
 
 impl<F, I> SumcheckFunction<F> for ZeroCheckEvals<(), I>
