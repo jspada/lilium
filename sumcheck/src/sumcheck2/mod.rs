@@ -7,6 +7,7 @@ pub mod oracles;
 mod prove;
 mod reduction;
 mod relation;
+pub mod zerocheck;
 
 pub use oracles::OracleQueryInstance;
 pub use prove::ProverKey;

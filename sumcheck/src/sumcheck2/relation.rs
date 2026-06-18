@@ -6,7 +6,7 @@ use ark_ff::Field;
 use std::marker::PhantomData;
 use transcript::reduction2::{Message, Relation};
 
-fn merge<F: Field, O: Oracle<F>>(
+pub(crate) fn merge<F: Field, O: Oracle<F>>(
     structure: &Mles<O::Function, F>,
     instance: &Mles<O::Function, F>,
     witness: &Mles<O::Function, F>,
