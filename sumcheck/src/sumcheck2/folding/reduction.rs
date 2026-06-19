@@ -12,8 +12,8 @@ use ark_ff::Field;
 use sponge::sponge::Duplex;
 use std::marker::PhantomData;
 use transcript::reduction2::{
-    FoldingRelation, GuardedProof, ProverOutput, Reduction, Transcript, TranscriptBuilder,
-    VerifierTranscript,
+    FoldingRelation, FoldingScheme, GuardedProof, ProverOutput, Reduction, Transcript,
+    TranscriptBuilder, VerifierTranscript,
 };
 
 pub struct SumFold<F, O>(PhantomData<(F, O)>);
@@ -191,4 +191,12 @@ where
             oracle_instance,
         })
     }
+}
+
+impl<F, O> FoldingScheme<F, SumcheckRelation<F, O>> for SumFold<F, O>
+where
+    F: Field,
+    O: Oracle<F>,
+    O::Instance: Foldable<F>,
+{
 }
