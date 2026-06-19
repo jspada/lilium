@@ -1,10 +1,8 @@
-use crate::{
-    sumcheck2::{
-        evals::Mles,
-        oracles::{partial::OracleParams, Oracle},
-        relation::oracle_evals,
-    },
-    zerocheck::CompactPowers,
+use crate::sumcheck2::{
+    evals::Mles,
+    oracles::{partial::OracleParams, Oracle},
+    relation::oracle_evals,
+    zerocheck::ZeroSumcheckInstance,
 };
 use ark_ff::Field;
 use std::marker::PhantomData;
@@ -34,12 +32,6 @@ impl<F: Field, O: Oracle<F>> Relation for Zerocheck<F, O> {
 /// A special case of sumcheck for zerocheck to be reduced into.
 #[derive(Clone, Copy, Debug)]
 pub struct ZeroSumcheck<F, O>(PhantomData<(F, O)>);
-
-#[derive(Clone, Debug)]
-pub struct ZeroSumcheckInstance<F: Field, O: Oracle<F>> {
-    zerocheck_powers: CompactPowers<F>,
-    oracle_instance: O::Instance,
-}
 
 #[derive(Clone, Copy, Debug)]
 pub enum ZerocheckError<I> {
