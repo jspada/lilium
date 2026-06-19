@@ -262,3 +262,60 @@ pub fn prove_and_verify<F: Field>(powers: CompactPowers<F>, mle: Vec<Evals<F>>, 
     let checks = verifier.check_evals_at_r(evals, eval, &NoChallenges::default());
     assert!(checks);
 }
+
+// Test that prove_zerocheck (the prover the FLCS reduction relies on) folds down
+// to the correct evaluation by comparison with an algorithmically independent evaluation
+// using EvalsExt::eval at the challenge point the prover produced.
+// Note that the prove_and_verify above only feeds the provers own evals.inner()
+// back into check_evals_at_r.
+#[test]
+fn zerocheck_eval_matches_mle() {
+    use crate::polynomials::EvalsExt;
+    use ark_ff::UniformRand;
+    use ark_vesta::Fr;
+    use rand::{rngs::StdRng, SeedableRng};
+
+    let mut rng = StdRng::seed_from_u64(7);
+    let mut elem = || Fr::rand(&mut rng);
+
+    // Build a random inner MLE (a, b, c per hypercube point) and the zerocheck wrapped MLE.
+    let powers = CompactPowers::new(elem(), VARS);
+    let mut inner_mles: Vec<SimpleEval<Fr, 3>> = Vec::with_capacity(1 << VARS);
+    let mut witness: Vec<Evals<Fr>> = Vec::with_capacity(1 << VARS);
+    for z in powers.eval_over_domain() {
+        // We are only testing eval plumbing, not the zero property, so a * b != c here
+        let inner = SimpleEval::new([elem(), elem(), elem()]);
+        inner_mles.push(inner);
+        witness.push(Evals::new(z, inner));
+    }
+
+    // Run the zerocheck prover to get its evaluation of inner MLE at the challenge point (actual result)
+    let prover = SumcheckProver::<Fr, ZeroCheckWrapped>::new_symbolic(VARS, &ZeroCheckWrapped);
+    let verifier = SumcheckVerifier::<Fr, ZeroCheckWrapped>::new_symbolic(ZeroCheckWrapped, VARS);
+    let mut transcript = TranscriptBuilder::new(VARS, ParamResolver::new())
+        .add_reduction_pattern::<Fr, SumcheckVerifier<Fr, ZeroCheckWrapped>>(&verifier)
+        .finish::<Fr, UnsafeSponge<Fr>>()
+        .instantiate();
+    let actual_output = prover
+        .prove_zerocheck(powers, &mut transcript, witness, &NoChallenges::default())
+        .unwrap();
+    transcript.finish().unwrap();
+
+    // Independent evaluations of the inner MLE at the same challenge point (expected result)
+    let expected_eval1 = EvalsExt::eval(&inner_mles[..], actual_output.point.clone());
+
+    assert_eq!(
+        actual_output.evals.inner().inner(),
+        expected_eval1.inner(),
+        "The prove_zerocheck inner eval disagrees with independent MLE eval at the challenge point"
+    );
+
+    // Also check consistency of MLE evaluators
+    let expected_eval2 = EvalsExt::eval_slow(inner_mles, actual_output.point);
+
+    assert_eq!(
+        expected_eval1.inner(),
+        expected_eval2.inner(),
+        "EvalsExt::eval and EvalsExt::eval_slow disagree at the challenge point (MLE evaluators are inconsistent)"
+    );
+}
