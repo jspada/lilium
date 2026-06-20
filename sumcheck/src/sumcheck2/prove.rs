@@ -112,7 +112,7 @@ impl<F: Field, O: Oracle<F>> ProverKey<F, O> {
     }
 
     /// Adds witness and structure evals to the witness.
-    fn prepare_witness(
+    pub(crate) fn prepare_witness(
         &self,
         mut witness: Vec<Mles<O::Function, F>>,
         instance_evals: Mles<O::Function, F>,
@@ -175,7 +175,7 @@ impl<F: Field, O: Oracle<F>> ProverKey<F, O> {
         }
     }
 
-    fn bind_variable(&self, mles: &mut Vec<Mles<O::Function, F>>, var: F) {
+    pub(crate) fn bind_variable(&self, mles: &mut Vec<Mles<O::Function, F>>, var: F) {
         assert!(mles.len().is_power_of_two());
         let len = mles.len();
         let (left, right) = mles.split_at_mut(len / 2);
@@ -187,5 +187,24 @@ impl<F: Field, O: Oracle<F>> ProverKey<F, O> {
         }
 
         mles.truncate(len / 2);
+    }
+
+    pub(crate) fn degree(&self) -> usize {
+        self.degree
+    }
+
+    pub(crate) fn f(&self) -> &O::Function {
+        &self.f
+    }
+
+    pub(crate) fn vars(&self) -> usize {
+        self.vars
+    }
+
+    /// Increases the degree by 1, to be used by zerocheck
+    /// which adds an extra multiplication at the end.
+    pub(crate) fn increase_degree(mut self) -> Self {
+        self.degree += 1;
+        self
     }
 }

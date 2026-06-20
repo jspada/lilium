@@ -357,13 +357,13 @@ where
 
 /// Structure holding a partially fixed `CompactPowers`.
 /// Allow to fix variables 1 at a time and compute the corresponding MLE.
-struct ShrinkingPowers<F: Field> {
+pub(crate) struct ShrinkingPowers<F: Field> {
     powers: CompactPowers<F>,
     constants: Vec<F>,
 }
 
 impl<F: Field> ShrinkingPowers<F> {
-    fn new(powers: CompactPowers<F>) -> Self {
+    pub(crate) fn new(powers: CompactPowers<F>) -> Self {
         Self {
             powers,
             constants: vec![],
@@ -371,7 +371,7 @@ impl<F: Field> ShrinkingPowers<F> {
     }
 
     /// Fixes upper variables and computes MLE.
-    fn fix(&mut self, point: F) -> Vec<F> {
+    pub(crate) fn fix(&mut self, point: F) -> Vec<F> {
         assert_ne!(self.powers.coefficients.len(), 0, "no variable left to fix");
 
         let constant = self.powers.fix_upper_var(point);

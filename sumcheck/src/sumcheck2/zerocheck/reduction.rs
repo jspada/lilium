@@ -1,13 +1,14 @@
 use crate::{
+    polynomials::MultiPoint,
     sumcheck2::{
-        evals::Mles,
-        oracles::{Oracle, QueryRelation},
+        evals::{Evals, Mles},
+        oracles::{Oracle, QueryRelation, SumcheckFunction},
         prove,
         reduction::SumcheckVerifierKey,
         zerocheck::{ZeroSumcheck, ZeroSumcheckInstance, Zerocheck},
-        SumcheckError, SumcheckInstance, SumcheckMessage, SumcheckReduction,
+        OracleQueryInstance, SumcheckError, SumcheckInstance, SumcheckMessage, SumcheckReduction,
     },
-    zerocheck::CompactPowers,
+    zerocheck::{CompactPowers, ShrinkingPowers},
 };
 use ark_ff::Field;
 use sponge::sponge::Duplex;
@@ -108,20 +109,44 @@ impl<F: Field, O: Oracle<F>> Reduction<F, ZeroSumcheck<F, O>, QueryRelation<F, O
     }
 
     fn verifier_key(structure_1: &O, structure_2: &O) -> Self::VerifierKey {
-        SumcheckReduction::verifier_key(structure_1, structure_2)
+        SumcheckReduction::verifier_key(structure_1, structure_2).increase_degree()
     }
 
     fn key_pair(structure_1: &O, structure_2: &O) -> (Self::VerifierKey, Self::ProverKey) {
-        SumcheckReduction::key_pair(structure_1, structure_2)
+        let (verifier_key, prover_key) = SumcheckReduction::key_pair(structure_1, structure_2);
+        (verifier_key.increase_degree(), prover_key.increase_degree())
     }
 
     fn prove<S: Duplex<F>>(
-        _key: &Self::ProverKey,
-        _instance: ZeroSumcheckInstance<F, O>,
-        _witness: Vec<Mles<O::Function, F>>,
-        _transcript: &mut Transcript<F, S>,
+        key: &Self::ProverKey,
+        instance: ZeroSumcheckInstance<F, O>,
+        witness: Vec<Mles<O::Function, F>>,
+        transcript: &mut Transcript<F, S>,
     ) -> ProverOutput<QueryRelation<F, O>, Self::Proof> {
-        todo!()
+        let ZeroSumcheckInstance {
+            zerocheck_powers,
+            oracle_instance,
+        } = instance;
+
+        let oracle_witness = O::witness_from_evals(&witness);
+        let instance_evals = O::instance_evals(&oracle_instance);
+        let (messages, point, eval) =
+            key.prove_zerocheck(witness, transcript, instance_evals, zerocheck_powers);
+
+        let instance = OracleQueryInstance {
+            oracle_instance,
+            point,
+            eval,
+        };
+
+        let proof = messages;
+
+        let witness = oracle_witness;
+        ProverOutput {
+            instance,
+            witness,
+            proof,
+        }
     }
 
     fn verify<S: Duplex<F>>(
@@ -143,5 +168,99 @@ impl<F: Field, O: Oracle<F>> Reduction<F, ZeroSumcheck<F, O>, QueryRelation<F, O
         // Checking instead f(r) = eval / z(r)
         reduced.eval /= powers_eval;
         Ok(reduced)
+    }
+}
+
+impl<F: Field, O: Oracle<F>> prove::ProverKey<F, O> {
+    fn prove_zerocheck<S: Duplex<F>>(
+        &self,
+        witness: Vec<Mles<O::Function, F>>,
+        transcript: &mut Transcript<F, S>,
+        instance_evals: Mles<O::Function, F>,
+        powers: CompactPowers<F>,
+    ) -> (Vec<SumcheckMessage<F>>, MultiPoint<F>, F) {
+        let mut witness = self.prepare_witness(witness, instance_evals);
+        let mut powers_over_domain = powers.eval_over_domain();
+        let mut shrinking_powers = ShrinkingPowers::new(powers);
+
+        let mut vars = vec![];
+        let mut messages = vec![];
+
+        for _ in 0..self.vars() {
+            let message = self.zerocheck_message(&witness, &powers_over_domain);
+            let degree = self.degree();
+            let [r] = transcript.send_message(&message, &degree);
+
+            self.bind_variable(&mut witness, r);
+            powers_over_domain = shrinking_powers.fix(r);
+            vars.push(r);
+            messages.push(message);
+        }
+
+        assert_eq!(witness.len(), 1);
+
+        let eval: F = self.f().function(&witness[0]);
+
+        vars.reverse();
+        let point = MultiPoint::new(vars);
+
+        (messages, point, eval)
+    }
+
+    /// Self::message specialized for zerocheck.
+    fn zerocheck_message(&self, mles: &[Mles<O::Function, F>], powers: &[F]) -> SumcheckMessage<F> {
+        assert!(mles.len().is_power_of_two());
+
+        let degree = self.degree();
+
+        let (left, right) = mles.split_at(mles.len() / 2);
+
+        let f = self.f();
+
+        let powers = {
+            let (left, right) = powers.split_at(mles.len() / 2);
+            left.iter().zip(right).map(|(left, right)| [*left, *right])
+        };
+
+        let mut message = vec![F::zero(); degree];
+        for ((left, right), powers) in left.iter().zip(right).zip(powers) {
+            Self::zerocheck_eval_acc(f, &mut message, [left, right], powers);
+        }
+
+        SumcheckMessage(message)
+    }
+
+    fn zerocheck_eval_acc(
+        f: &O::Function,
+        acc: &mut [F],
+        evals: [&Mles<O::Function, F>; 2],
+        powers: [F; 2],
+    ) {
+        // NOTE: In a valid zerocheck, evaluations at 0 and 1 can only be 0.
+        // For that reason, we don't even need to compute them.
+        let [left, right] = evals;
+        // The last evaluations, and what is needed to compute the next.
+        let mut e = <O::Function as Evals>::combine::<F, F, _, _>(left, right, |e0, e1| {
+            let coeff = *e1 - e0;
+            let last_eval = *e0;
+            let last_eval = last_eval + coeff.double();
+            (last_eval, coeff)
+        });
+
+        // Similarly to the powers use for zerocheck
+        let [powl, powr] = powers;
+        let power_coeff = powr - powl;
+        let mut last_power = powl + power_coeff.double();
+
+        for m in acc[2..].iter_mut() {
+            let evals = <O::Function as Evals>::map_evals(&e, |(eval, _)| *eval);
+            let eval: F = f.function(&evals);
+
+            *m += eval * last_power;
+            <O::Function as Evals>::apply(&mut e, |(last, coeff)| {
+                *last += coeff;
+            });
+            last_power += power_coeff;
+        }
     }
 }

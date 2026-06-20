@@ -70,6 +70,13 @@ impl<F: Field> SumcheckVerifierKey<F> {
     pub fn vars(&self) -> usize {
         self.vars
     }
+
+    /// Increases the degree by 1, to be used by zerocheck
+    /// which adds an extra multiplication at the end.
+    pub(crate) fn increase_degree(mut self) -> Self {
+        self.degree += 1;
+        self
+    }
 }
 
 impl<F: Field, O: Oracle<F>> Reduction<F, SumcheckRelation<F, O>, QueryRelation<F, O>>
