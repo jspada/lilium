@@ -4,6 +4,7 @@ use crate::{
     sumcheck2::{
         degree,
         evals::{EvalsCore, Mles},
+        folding::Foldable,
         oracles::Oracle,
         ProverKey, SumcheckError, SumcheckInstance, SumcheckMessage, SumcheckRelation,
     },
@@ -26,10 +27,6 @@ pub struct SumFoldKey<F: Field, O: Oracle<F>> {
     extended_weights: BarycentricWeights<F>,
     degree: usize,
     f: O::Function,
-}
-
-trait Foldable<F> {
-    fn fold(folder: &FieldFolder<F>, a: Self, b: Self) -> Self;
 }
 
 impl<F, O> Reduction<F, FoldingRelation<SumcheckRelation<F, O>>, SumcheckRelation<F, O>>
