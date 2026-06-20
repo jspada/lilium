@@ -1,8 +1,11 @@
 use crate::{
     sumcheck2::{
         evals::Mles,
-        oracles::Oracle,
+        oracles::{Oracle, QueryRelation},
+        prove,
+        reduction::SumcheckVerifierKey,
         zerocheck::{ZeroSumcheck, ZeroSumcheckInstance, Zerocheck},
+        SumcheckError, SumcheckInstance, SumcheckMessage, SumcheckReduction,
     },
     zerocheck::CompactPowers,
 };
@@ -80,5 +83,65 @@ where
             zerocheck_powers,
             oracle_instance: instance,
         })
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct ZerocheckSumcheckReduction<F, O>(PhantomData<(F, O)>);
+
+impl<F: Field, O: Oracle<F>> Reduction<F, ZeroSumcheck<F, O>, QueryRelation<F, O>>
+    for ZerocheckSumcheckReduction<F, O>
+{
+    type ProverKey = prove::ProverKey<F, O>;
+
+    type VerifierKey = SumcheckVerifierKey<F>;
+
+    type Proof = Vec<SumcheckMessage<F>>;
+
+    type Error = SumcheckError;
+
+    fn transcript_pattern(
+        key: &Self::VerifierKey,
+        builder: TranscriptBuilder,
+    ) -> TranscriptBuilder {
+        SumcheckReduction::<F, O>::transcript_pattern(key, builder)
+    }
+
+    fn verifier_key(structure_1: &O, structure_2: &O) -> Self::VerifierKey {
+        SumcheckReduction::verifier_key(structure_1, structure_2)
+    }
+
+    fn key_pair(structure_1: &O, structure_2: &O) -> (Self::VerifierKey, Self::ProverKey) {
+        SumcheckReduction::key_pair(structure_1, structure_2)
+    }
+
+    fn prove<S: Duplex<F>>(
+        _key: &Self::ProverKey,
+        _instance: ZeroSumcheckInstance<F, O>,
+        _witness: Vec<Mles<O::Function, F>>,
+        _transcript: &mut Transcript<F, S>,
+    ) -> ProverOutput<QueryRelation<F, O>, Self::Proof> {
+        todo!()
+    }
+
+    fn verify<S: Duplex<F>>(
+        key: &Self::VerifierKey,
+        instance: ZeroSumcheckInstance<F, O>,
+        proof: GuardedProof<Self::Proof>,
+        transcript: &mut VerifierTranscript<F, S>,
+    ) -> Result<<QueryRelation<F, O> as Relation>::Instance, Self::Error> {
+        let ZeroSumcheckInstance {
+            zerocheck_powers,
+            oracle_instance,
+        } = instance;
+        let instance = SumcheckInstance::new(F::ZERO, oracle_instance);
+        let mut reduced = SumcheckReduction::<F, O>::verify(key, instance, proof, transcript)?;
+        let powers_eval = zerocheck_powers.point_eval(&reduced.point);
+
+        // As the check will be f(r) * z(r) = eval
+        // We can take it off here and have the same output as normal sumcheck.
+        // Checking instead f(r) = eval / z(r)
+        reduced.eval /= powers_eval;
+        Ok(reduced)
     }
 }
