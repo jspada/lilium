@@ -11,6 +11,9 @@ mod relation;
 
 #[derive(Clone, Debug)]
 pub struct ZeroSumcheckInstance<F: Field, O: Oracle<F>> {
+    /// Same sum as in sumcheck, with the particularity that it will be
+    /// zero unless the instance is the result of folding.
+    sum: F,
     zerocheck_powers: CompactPowers<F>,
     oracle_instance: O::Instance,
 }

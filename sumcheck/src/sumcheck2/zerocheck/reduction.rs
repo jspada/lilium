@@ -57,6 +57,7 @@ where
         let zerocheck_powers = CompactPowers::new(chall, vars);
 
         let instance = ZeroSumcheckInstance {
+            sum: F::ZERO,
             zerocheck_powers,
             oracle_instance: instance,
         };
@@ -81,6 +82,7 @@ where
         let zerocheck_powers = CompactPowers::new(chall, vars);
 
         Ok(ZeroSumcheckInstance {
+            sum: F::ZERO,
             zerocheck_powers,
             oracle_instance: instance,
         })
@@ -124,6 +126,7 @@ impl<F: Field, O: Oracle<F>> Reduction<F, ZeroSumcheck<F, O>, QueryRelation<F, O
         transcript: &mut Transcript<F, S>,
     ) -> ProverOutput<QueryRelation<F, O>, Self::Proof> {
         let ZeroSumcheckInstance {
+            sum,
             zerocheck_powers,
             oracle_instance,
         } = instance;
@@ -131,7 +134,7 @@ impl<F: Field, O: Oracle<F>> Reduction<F, ZeroSumcheck<F, O>, QueryRelation<F, O
         let oracle_witness = O::witness_from_evals(&witness);
         let instance_evals = O::instance_evals(&oracle_instance);
         let (messages, point, eval) =
-            key.prove_zerocheck(witness, transcript, instance_evals, zerocheck_powers);
+            key.prove_zerocheck(witness, transcript, instance_evals, sum, zerocheck_powers);
 
         let instance = OracleQueryInstance {
             oracle_instance,
@@ -156,10 +159,11 @@ impl<F: Field, O: Oracle<F>> Reduction<F, ZeroSumcheck<F, O>, QueryRelation<F, O
         transcript: &mut VerifierTranscript<F, S>,
     ) -> Result<<QueryRelation<F, O> as Relation>::Instance, Self::Error> {
         let ZeroSumcheckInstance {
+            sum,
             zerocheck_powers,
             oracle_instance,
         } = instance;
-        let instance = SumcheckInstance::new(F::ZERO, oracle_instance);
+        let instance = SumcheckInstance::new(sum, oracle_instance);
         let mut reduced = SumcheckReduction::<F, O>::verify(key, instance, proof, transcript)?;
         let powers_eval = zerocheck_powers.point_eval(&reduced.point);
 
@@ -177,6 +181,7 @@ impl<F: Field, O: Oracle<F>> prove::ProverKey<F, O> {
         witness: Vec<Mles<O::Function, F>>,
         transcript: &mut Transcript<F, S>,
         instance_evals: Mles<O::Function, F>,
+        sum: F,
         powers: CompactPowers<F>,
     ) -> (Vec<SumcheckMessage<F>>, MultiPoint<F>, F) {
         let mut witness = self.prepare_witness(witness, instance_evals);
@@ -187,7 +192,7 @@ impl<F: Field, O: Oracle<F>> prove::ProverKey<F, O> {
         let mut messages = vec![];
 
         for _ in 0..self.vars() {
-            let message = self.zerocheck_message(&witness, &powers_over_domain);
+            let message = self.zerocheck_message(&witness, &powers_over_domain, sum);
             let degree = self.degree();
             let [r] = transcript.send_message(&message, &degree);
 
@@ -208,7 +213,12 @@ impl<F: Field, O: Oracle<F>> prove::ProverKey<F, O> {
     }
 
     /// Self::message specialized for zerocheck.
-    fn zerocheck_message(&self, mles: &[Mles<O::Function, F>], powers: &[F]) -> SumcheckMessage<F> {
+    fn zerocheck_message(
+        &self,
+        mles: &[Mles<O::Function, F>],
+        powers: &[F],
+        sum: F,
+    ) -> SumcheckMessage<F> {
         assert!(mles.len().is_power_of_two());
 
         let degree = self.degree();
@@ -224,7 +234,7 @@ impl<F: Field, O: Oracle<F>> prove::ProverKey<F, O> {
 
         let mut message = vec![F::zero(); degree];
         for ((left, right), powers) in left.iter().zip(right).zip(powers) {
-            Self::zerocheck_eval_acc(f, &mut message, [left, right], powers);
+            Self::zerocheck_eval_acc(f, &mut message, [left, right], powers, sum.is_zero());
         }
 
         SumcheckMessage(message)
@@ -235,22 +245,30 @@ impl<F: Field, O: Oracle<F>> prove::ProverKey<F, O> {
         acc: &mut [F],
         evals: [&Mles<O::Function, F>; 2],
         powers: [F; 2],
+        sums_to_zero: bool,
     ) {
-        // NOTE: In a valid zerocheck, evaluations at 0 and 1 can only be 0.
-        // For that reason, we don't even need to compute them.
+        // NOTE: In zerocheck, if evaluations at 0 and 1 are zero,
+        // we don't even need to compute them.
         let [left, right] = evals;
         // The last evaluations, and what is needed to compute the next.
         let mut e = <O::Function as Evals>::combine::<F, F, _, _>(left, right, |e0, e1| {
             let coeff = *e1 - e0;
-            let last_eval = *e0;
-            let last_eval = last_eval + coeff.double();
+            let mut last_eval = *e0;
+            if sums_to_zero {
+                last_eval += coeff.double();
+            };
             (last_eval, coeff)
         });
 
         // Similarly to the powers use for zerocheck
         let [powl, powr] = powers;
         let power_coeff = powr - powl;
-        let mut last_power = powl + power_coeff.double();
+        let mut last_power = powl;
+        if sums_to_zero {
+            last_power += power_coeff.double();
+        }
+
+        let acc: &mut [F] = if sums_to_zero { &mut acc[2..] } else { acc };
 
         for m in acc[2..].iter_mut() {
             let evals = <O::Function as Evals>::map_evals(&e, |(eval, _)| *eval);
