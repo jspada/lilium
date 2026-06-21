@@ -8,6 +8,6 @@ pub(crate) use degree::folding_degree;
 pub use reduction::SumFold;
 pub use zerofold::ZeroFold;
 
-trait Foldable<F> {
+pub trait Foldable<F> {
     fn fold(folder: &FieldFolder<F>, a: Self, b: Self) -> Self;
 }
