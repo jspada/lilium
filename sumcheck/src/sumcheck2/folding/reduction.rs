@@ -2,9 +2,8 @@ use crate::{
     barycentric_eval::BarycentricWeights,
     folding::utils::FieldFolder,
     sumcheck2::{
-        degree,
         evals::{EvalsCore, Mles},
-        folding::Foldable,
+        folding::{folding_degree, Foldable},
         oracles::Oracle,
         ProverKey, SumcheckError, SumcheckInstance, SumcheckMessage, SumcheckRelation,
     },
@@ -53,7 +52,7 @@ where
     }
 
     fn verifier_key(oracle: &O, _: &O) -> Self::VerifierKey {
-        let degree = degree::sumcheck_degree(oracle);
+        let degree = folding_degree(oracle);
         let weights = BarycentricWeights::compute(degree as u32);
         let extended_weights = BarycentricWeights::compute(degree as u32 + 1);
         let f = oracle.function().clone();

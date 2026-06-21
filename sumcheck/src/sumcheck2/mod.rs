@@ -30,7 +30,7 @@ pub(crate) mod degree {
     use ark_ff::Field;
 
     #[derive(Clone, Copy, Debug)]
-    struct Degree(usize);
+    pub struct Degree(pub usize);
 
     impl Add for Degree {
         type Output = Self;
